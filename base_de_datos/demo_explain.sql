@@ -5,7 +5,7 @@
 -- 5000 filas, y se borra al final.
 --
 -- Uso, desde la raiz del repo:
---   ./database/demo_explain.sh
+--   ./base_de_datos/demo_explain.sh
 
 USE concesionario_db;
 SET NAMES utf8mb4;

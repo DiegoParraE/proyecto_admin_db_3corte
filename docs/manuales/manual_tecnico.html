@@ -2,144 +2,136 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Manual técnico — Concesionario</title>
+<title>Manual técnico</title>
 <link rel="stylesheet" href="estilo.css">
 </head>
 <body>
-<section class="cover">
-  <div>
-    <p class="kicker">CTIC Teinco · Ingeniería de Sistemas · Administración de Bases de Datos</p>
-    <h1>Manual técnico</h1>
-    <p class="sub">Dónde cumple el proyecto cada requisito del integrador</p>
-    <div class="meta">
-      <p>Base de datos: concesionario_db en MySQL 8.4</p>
-      <p>Aplicación: Flask, renderizada en el servidor, conexión directa con PyMySQL</p>
-      <p>Estudiante: Diego Parra</p>
-    </div>
-  </div>
-  <p>El documento largo de modelos y diccionario sigue en <code>docs/documento_tecnico.pdf</code>. Este manual dice, requisito por requisito, en qué archivo se cumple.</p>
+<section class="portada">
+  <p>Corporación Tecnológica Industrial Colombiana — TEINCO</p>
+  <p>Ingeniería de Sistemas</p>
+  <p>Administración de Bases de Datos</p>
+  <h1>Manual técnico</h1>
+  <p>Concesionario — dónde quedó cada punto del trabajo</p>
+  <p class="linea">Diego Parra</p>
+  <p>2026</p>
 </section>
 
-<h2>1. Problema</h2>
-<p>Un concesionario con sedes en Bogotá, Medellín y Cali llevaba inventario, compras, ventas y taller en hojas de cálculo. Un mismo chasis se podía anotar dos veces y un carro ya vendido se podía ofrecer de nuevo. El precio del día de la venta se mezclaba con el precio de lista. La aplicación guarda ese flujo en MySQL y no deja editar el estado del inventario a mano.</p>
+<h2>1. Cómo está organizado el proyecto</h2>
+<pre>app/
+  frontend/     pantallas (templates) y el css
+  backend/      app.py, requirements.txt y config.example.env
+base_de_datos/
+  01_ddl.sql ... 07_indices.sql
+  concesionario_backup.sql
+  demo_*.sh
+docs/
+  documento_tecnico.pdf
+  modelo_er.drawio</pre>
+<p>La base se llama <code>concesionario_db</code> y corre en MySQL 8.4. La página la hace Flask. No hay una API en el medio: el navegador le pide la página a Flask y Flask abre MySQL con PyMySQL.</p>
+<p>El modelo y el diccionario de datos están en <code>docs/documento_tecnico.pdf</code>. El diagrama está en <code>docs/modelo_er.drawio</code>.</p>
 
-<h2>2. Mapa de requisitos</h2>
+<h2>2. Punto por punto</h2>
 <table>
-  <tr><th>Requisito del enunciado</th><th>Dónde está</th></tr>
-  <tr><td>Mínimo 8 tablas, relaciones 1:N y al menos una N:M</td><td>10 tablas en <code>database/01_ddl.sql</code>. 1:N: sede-vendedor, sede-carro, cliente-venta, vendedor-venta, carro-venta, carro-mantenimiento. N:M: <code>CARRO_PROVEEDOR</code> entre <code>CARROS</code> y <code>PROVEEDOR</code>.</td></tr>
-  <tr><td>Modelo E-R en herramienta CASE</td><td><code>docs/modelo_er.drawio</code>, para abrir en draw.io. El relacional y el diccionario están en <code>docs/documento_tecnico.pdf</code>.</td></tr>
-  <tr><td>Normalización hasta 3FN, justificada</td><td>Sección de normalización del documento técnico. El teléfono de la sede no se copia en el vendedor. El costo de compra vive en <code>CARRO_PROVEEDOR</code>, no en el proveedor. <code>VENTA.Monto_Total</code> se guarda a propósito: es el precio del día de la venta, no una copia del precio de lista.</td></tr>
-  <tr><td>Diccionario de datos</td><td><code>docs/documento_tecnico.pdf</code>, una ficha por tabla: campo, tipo, nulidad, llave y descripción.</td></tr>
-  <tr><td>DDL con PK, FK, NOT NULL, UNIQUE, CHECK y DEFAULT</td><td><code>database/01_ddl.sql</code>. Ejemplos: <code>uk_carro_vin</code>, <code>uk_venta_carro</code>, <code>chk_carro_estado</code>, <code>chk_venta_pago</code>, <code>Estado_Inventario</code> con DEFAULT <code>Disponible</code>, <code>AUDITORIA.Fecha_Hora</code> con DEFAULT <code>CURRENT_TIMESTAMP</code>.</td></tr>
-  <tr><td>DML con al menos 20 filas en las tablas principales</td><td><code>database/02_dml.sql</code>: 20 clientes y 20 carros. También 3 sedes, 3 vendedores, 2 proveedores, 4 compras, 2 ventas y 1 mantenimiento.</td></tr>
-  <tr><td>Mínimo 3 usuarios, con GRANT y REVOKE demostrados</td><td><code>database/06_usuarios.sql</code>. Roles: <code>admin_concesionario</code>, <code>vendedor_concesionario</code> y <code>consulta_concesionario</code>. Hay un cuarto, <code>auth_concesionario</code>, que solo lee <code>USUARIO</code> para el login. El REVOKE está en las líneas que conceden y quitan <code>DELETE</code> sobre <code>VENTA</code> y <code>EXECUTE</code> de <code>sp_anular_venta</code>. La demo es <code>database/demo_permisos.sh</code>.</td></tr>
-  <tr><td>Backup y restauración en vivo</td><td><code>database/generar_backup.sh</code> produce <code>database/concesionario_backup.sql</code> con <code>mysqldump --single-transaction --routines --triggers</code>. <code>database/demo_backup.sh --confirmar</code> borra las ventas y las restaura.</td></tr>
-  <tr><td>Mínimo 3 índices justificados y EXPLAIN antes y después</td><td><code>database/07_indices.sql</code>: <code>idx_venta_fecha</code>, <code>idx_carro_estado_marca</code>, <code>idx_cliente_apellido</code>, <code>idx_manto_fecha</code>. <code>database/demo_explain.sh</code> muestra el plan. En la tabla de laboratorio de 5000 filas, antes <code>type=ALL</code> y 5000 filas; después <code>type=ref</code>, <code>idx_demo_fecha</code> y unas 6 filas.</td></tr>
-  <tr><td>Mínimo 3 vistas, 3 procedimientos y 2 triggers</td><td>Vistas en <code>03_vistas.sql</code>: <code>vw_detalle_ventas</code>, <code>vw_inventario_disponible</code>, <code>vw_ventas_por_sede</code>. Procedimientos en <code>04_procedimientos.sql</code>: <code>sp_registrar_venta</code>, <code>sp_anular_venta</code>, <code>sp_reporte_ventas</code>. Triggers en <code>05_triggers.sql</code>: <code>trg_venta_before_insert</code>, <code>trg_venta_after_insert</code>, <code>trg_venta_after_delete</code>.</td></tr>
-  <tr><td>Transacción con BEGIN, COMMIT y ROLLBACK</td><td><code>sp_registrar_venta</code> y <code>sp_anular_venta</code> usan <code>START TRANSACTION</code>, <code>COMMIT</code> y <code>ROLLBACK</code>. Fuera de un procedimiento, <code>database/demo_transaccion.sql</code> hace <code>BEGIN</code>, inserta un cliente y hace <code>ROLLBACK</code>. El conteo de esa cédula queda en 0.</td></tr>
-  <tr><td>Tabla de auditoría llena por un trigger</td><td>Tabla <code>AUDITORIA</code> en el DDL. La llenan <code>trg_venta_after_insert</code> y <code>trg_venta_after_delete</code>, con <code>USER()</code>, la operación y el id.</td></tr>
-  <tr><td>SGBD justificado</td><td>MySQL 8.4 InnoDB. La justificación (licencia, transacciones, procedimientos y el conector de Python) está en el documento técnico. El dump original ya era MySQL.</td></tr>
-  <tr><td>Front-end conectado directo al SGBD, sin API intermedia</td><td><code>app/app.py</code> abre PyMySQL en cada petición. No hay servidor REST aparte. El navegador habla con Flask y Flask habla con MySQL. El enunciado acepta una aplicación web renderizada en el servidor porque el navegador no puede hablar con el SGBD.</td></tr>
-  <tr><td>CRUD de al menos 4 entidades</td><td>Clientes, vehículos, taller, sedes, vendedores y proveedores: listar, crear, editar y eliminar. Ventas: listar, crear con procedimiento y anular con procedimiento.</td></tr>
-  <tr><td>Una pantalla llama un procedimiento y otra usa una vista</td><td>Registrar venta llama <code>sp_registrar_venta</code>. Anular llama <code>sp_anular_venta</code>. Inicio y la lista de ventas leen <code>vw_detalle_ventas</code>. El reporte llama <code>sp_reporte_ventas</code> y lee <code>vw_ventas_por_sede</code>.</td></tr>
-  <tr><td>Nunca conectar como root</td><td><code>conectar()</code> en <code>app/app.py</code> usa la cuenta del rol. <code>root</code> solo sirve para crear la base y el backup.</td></tr>
-  <tr><td>Credenciales fuera del código fuente</td><td>La plantilla sin claves es <code>app/config.example.env</code>. Las claves de demostración están en variables de <code>docker-compose.yml</code> para poder levantar todo con un comando, como pide la bonificación. No son claves de producción.</td></tr>
-  <tr><td>Consultas parametrizadas</td><td>Todas las consultas de <code>app/app.py</code> usan <code>%s</code>. No se concatena lo que escribe el usuario.</td></tr>
-  <tr><td>Login por roles</td><td>Tabla <code>USUARIO</code>. Tras el login, cada petición abre MySQL con la cuenta de ese rol. Por eso un INSERT de consulta lo niega también el SGBD, no solo la pantalla.</td></tr>
-  <tr><td>Mensajes claros de error</td><td><code>ValidationError</code> traduce 1062 (duplicado), 1451 y 1452 (foránea), 1142 y 1370 (permiso), 3819 (CHECK) y 1644 (el trigger).</td></tr>
-  <tr><td>Un reporte con datos agregados</td><td>Pantalla Reporte. El resumen por sede sale de <code>vw_ventas_por_sede</code> (cantidad y suma). El detalle del rango sale de <code>sp_reporte_ventas</code>.</td></tr>
-  <tr><td>Carpeta /database con scripts 01 a 07 y el backup</td><td><code>database/01_ddl.sql</code> a <code>07_indices.sql</code> y <code>database/concesionario_backup.sql</code>.</td></tr>
-  <tr><td>Carpeta /app y configuración de ejemplo</td><td><code>app/</code> y <code>app/config.example.env</code>.</td></tr>
-  <tr><td>README</td><td><code>README.md</code>: descripción, tecnologías, cómo ejecutarlo y usuarios de prueba.</td></tr>
-  <tr><td>Docker Compose, opcional</td><td><code>docker-compose.yml</code>. <code>docker compose up --build</code> levanta MySQL y la aplicación. La primera vez corre los scripts 01 a 07.</td></tr>
+  <tr><th>Lo que pide el trabajo</th><th>Dónde quedó</th></tr>
+  <tr><td>Mínimo 8 tablas, con 1:N y una N:M</td><td>Hay 10 tablas en <code>base_de_datos/01_ddl.sql</code>. Una sede tiene varios vendedores y varios carros. <code>CARRO_PROVEEDOR</code> es la tabla del medio entre carros y proveedores.</td></tr>
+  <tr><td>Modelo E-R en una herramienta CASE</td><td><code>docs/modelo_er.drawio</code>. Se abre en draw.io.</td></tr>
+  <tr><td>Normalización hasta 3FN</td><td>El teléfono de la sede no se copia en el vendedor. El costo de la compra está en <code>CARRO_PROVEEDOR</code>, no en el proveedor. El monto de la venta sí se guarda, porque es el precio de ese día. Si mañana cambia el precio del carro, la venta vieja no se mueve. Está explicado en el documento técnico.</td></tr>
+  <tr><td>Diccionario de datos</td><td>En el documento técnico, una ficha por tabla.</td></tr>
+  <tr><td>DDL con PK, FK, NOT NULL, UNIQUE, CHECK y DEFAULT</td><td><code>base_de_datos/01_ddl.sql</code>. El chasis es único. Un carro solo puede venderse una vez. El estado solo puede ser Disponible o Vendido, y por defecto queda Disponible.</td></tr>
+  <tr><td>Mínimo 20 registros en las tablas principales</td><td><code>base_de_datos/02_dml.sql</code>. Hay 20 clientes y 20 carros. También 3 sedes, 3 vendedores, 2 proveedores, 4 compras, 2 ventas y 1 mantenimiento.</td></tr>
+  <tr><td>Mínimo 3 usuarios, con GRANT y REVOKE</td><td><code>base_de_datos/06_usuarios.sql</code>. Están administrador, vendedor y consulta. Al vendedor se le da permiso de borrar ventas y enseguida se le quita. La prueba es <code>base_de_datos/demo_permisos.sh</code>.</td></tr>
+  <tr><td>Backup y restauración</td><td><code>base_de_datos/generar_backup.sh</code> deja el archivo <code>concesionario_backup.sql</code>. <code>demo_backup.sh --confirmar</code> borra las ventas y las vuelve a cargar.</td></tr>
+  <tr><td>Mínimo 3 índices y un EXPLAIN antes y después</td><td><code>base_de_datos/07_indices.sql</code> crea cuatro índices. <code>demo_explain.sh</code> muestra el plan. En la tabla de prueba de 5000 filas, sin índice recorre todas. Con índice baja a unas 6.</td></tr>
+  <tr><td>3 vistas, 3 procedimientos y 2 triggers</td><td>Vistas en <code>03_vistas.sql</code>: detalle de ventas, inventario disponible y ventas por sede. Procedimientos en <code>04_procedimientos.sql</code>: registrar venta, anular venta y reporte. Triggers en <code>05_triggers.sql</code>: antes de insertar, después de insertar y después de borrar. Son tres triggers.</td></tr>
+  <tr><td>Una transacción con BEGIN, COMMIT y ROLLBACK</td><td><code>sp_registrar_venta</code> usa START TRANSACTION, COMMIT y ROLLBACK. Por fuera, <code>base_de_datos/demo_transaccion.sql</code> hace BEGIN, inserta un cliente y hace ROLLBACK. Ese cliente no queda.</td></tr>
+  <tr><td>Auditoría llena por un trigger</td><td>La tabla <code>AUDITORIA</code> la escriben los triggers cuando se registra o se anula una venta. Guardan la cuenta de MySQL que lo hizo.</td></tr>
+  <tr><td>SGBD justificado</td><td>MySQL 8.4 con InnoDB. La comparación está en el documento técnico. El dump con el que empezó el trabajo ya era MySQL.</td></tr>
+  <tr><td>Página conectada directo a la base, sin API</td><td><code>app/backend/app.py</code>. Usa PyMySQL. El navegador no habla con MySQL. Flask arma el HTML y él sí abre la conexión. El enunciado acepta una página hecha en el servidor.</td></tr>
+  <tr><td>CRUD de por lo menos 4 entidades</td><td>Clientes, vehículos, taller, sedes, vendedores y proveedores se listan, se crean, se editan y se eliminan. Las ventas se listan, se crean y se anulan.</td></tr>
+  <tr><td>Una pantalla llama un procedimiento y otra usa una vista</td><td>Registrar venta llama <code>sp_registrar_venta</code>. Anular llama <code>sp_anular_venta</code>. Inicio y la lista de ventas leen la vista <code>vw_detalle_ventas</code>. El reporte llama <code>sp_reporte_ventas</code> y lee <code>vw_ventas_por_sede</code>.</td></tr>
+  <tr><td>No conectarse como root</td><td>Cada rol entra a MySQL con su cuenta. root solo crea la base y saca el backup.</td></tr>
+  <tr><td>Las claves no van en el código</td><td>La plantilla vacía es <code>app/backend/config.example.env</code>. Para la demo, Docker las pasa por variables. No son claves de un sistema real.</td></tr>
+  <tr><td>Consultas con parámetros</td><td>En <code>app.py</code> los valores van con <code>%s</code>. No se pega el texto del usuario dentro del SQL.</td></tr>
+  <tr><td>Login por roles</td><td>La tabla <code>USUARIO</code> tiene admin, vendedor y consulta. Después del login, Flask abre MySQL con la cuenta de ese rol. Si consulta intenta insertar, MySQL también lo niega.</td></tr>
+  <tr><td>Mensajes cuando algo falla</td><td>En <code>app.py</code>, la función que traduce los errores de MySQL: duplicado, llave foránea, permiso, CHECK y el mensaje del trigger.</td></tr>
+  <tr><td>Un reporte</td><td>La pantalla Reporte. Arriba el total de cada ciudad, abajo el detalle del rango de fechas.</td></tr>
+  <tr><td>Scripts numerados y backup</td><td><code>base_de_datos/01_ddl.sql</code> hasta <code>07_indices.sql</code>, más <code>concesionario_backup.sql</code>.</td></tr>
+  <tr><td>Docker, que es opcional</td><td><code>docker-compose.yml</code>. Con <code>docker compose up --build</code> sube MySQL y la página. La primera vez corre los scripts del 01 al 07.</td></tr>
 </table>
 
-<h2>3. Las diez tablas</h2>
+<h2>3. Las tablas</h2>
 <table>
-  <tr><th>Tabla</th><th>Para qué sirve</th></tr>
+  <tr><th>Tabla</th><th>Qué guarda</th></tr>
   <tr><td>SEDE</td><td>Bogotá, Medellín y Cali.</td></tr>
   <tr><td>CLIENTE</td><td>Quien compra. La cédula es única.</td></tr>
-  <tr><td>VENDEDOR</td><td>Asesor de una sede.</td></tr>
-  <tr><td>PROVEEDOR</td><td>Empresa que le vende carros al concesionario.</td></tr>
-  <tr><td>CARROS</td><td>Inventario. El chasis es único. El estado nace Disponible.</td></tr>
-  <tr><td>CARRO_PROVEEDOR</td><td>Relación N:M. Guarda la fecha y el costo de esa compra.</td></tr>
-  <tr><td>VENTA</td><td>Una venta de un carro. El carro no se puede vender dos veces: <code>CarroID</code> es único.</td></tr>
+  <tr><td>VENDEDOR</td><td>El asesor. Pertenece a una sede.</td></tr>
+  <tr><td>PROVEEDOR</td><td>La empresa que le vende carros al concesionario.</td></tr>
+  <tr><td>CARROS</td><td>El inventario. El chasis es único. En la base la columna se llama VIN.</td></tr>
+  <tr><td>CARRO_PROVEEDOR</td><td>Qué proveedor entregó qué carro, en qué fecha y a qué costo.</td></tr>
+  <tr><td>VENTA</td><td>Una venta. El carro no se puede repetir.</td></tr>
   <tr><td>MANTENIMIENTO</td><td>Un servicio de taller.</td></tr>
-  <tr><td>USUARIO</td><td>Login de la aplicación. La clave está hasheada con PBKDF2-SHA256.</td></tr>
-  <tr><td>AUDITORIA</td><td>Log de altas y anulaciones de ventas. La escribe el trigger.</td></tr>
+  <tr><td>USUARIO</td><td>El login de la página. La clave está hasheada.</td></tr>
+  <tr><td>AUDITORIA</td><td>El registro de ventas nuevas y anuladas. Lo escribe el trigger.</td></tr>
 </table>
 
-<h2>4. Qué hace cada objeto de la base</h2>
-<h3>Vistas</h3>
-<p>Una vista no guarda filas. Es una consulta con nombre. Las tres son <code>SQL SECURITY INVOKER</code>: se ejecutan con los permisos de quien pregunta, no con los de root.</p>
+<h2>4. Vistas, procedimientos y triggers</h2>
+<p>La vista no guarda filas. Es una consulta con nombre. Las tres se ejecutan con los permisos de quien pregunta, no con los de root.</p>
 <ul>
-  <li><code>vw_detalle_ventas</code> junta venta, cliente, vendedor, carro y sede. La usa Inicio y la lista de ventas.</li>
-  <li><code>vw_inventario_disponible</code> lista solo los carros en estado Disponible.</li>
-  <li><code>vw_ventas_por_sede</code> cuenta y suma las ventas de cada ciudad. La usa el reporte.</li>
+  <li><code>vw_detalle_ventas</code> junta la venta con el cliente, el vendedor, el carro y la sede.</li>
+  <li><code>vw_inventario_disponible</code> muestra solo los carros disponibles.</li>
+  <li><code>vw_ventas_por_sede</code> suma lo vendido en cada ciudad.</li>
 </ul>
-<h3>Procedimientos</h3>
-<p>También son <code>SQL SECURITY INVOKER</code>. Dentro de un procedimiento, <code>BEGIN</code> abre el bloque, no la transacción. Por eso usan <code>START TRANSACTION</code>.</p>
+<p>Los procedimientos:</p>
 <ul>
-  <li><code>sp_registrar_venta</code> revisa la forma de pago, lee el precio y el estado, inserta la venta y confirma. Si algo falla, deshace.</li>
-  <li><code>sp_anular_venta</code> borra la venta. Si no existía, deshace y avisa.</li>
+  <li><code>sp_registrar_venta</code> revisa el pago, toma el precio del carro, inserta la venta y confirma. Si algo falla, deshace.</li>
+  <li><code>sp_anular_venta</code> borra la venta. Si no existía, avisa y deshace.</li>
   <li><code>sp_reporte_ventas</code> devuelve las ventas entre dos fechas.</li>
 </ul>
-<h3>Triggers</h3>
-<p>El trigger corre solo, aunque nadie llame al procedimiento. Lo crea root, y por eso puede actualizar <code>CARROS</code> aunque el vendedor no tenga <code>UPDATE</code> sobre esa tabla.</p>
+<p>Dentro de un procedimiento, BEGIN abre el bloque de código, no la transacción. Por eso ahí se usa START TRANSACTION.</p>
+<p>Los triggers corren solos, aunque nadie llame al procedimiento:</p>
 <ul>
-  <li><code>trg_venta_before_insert</code> rechaza la venta si el carro no existe o no está Disponible.</li>
-  <li><code>trg_venta_after_insert</code> marca el carro Vendido y escribe <code>AUDITORIA</code>.</li>
-  <li><code>trg_venta_after_delete</code> devuelve el carro a Disponible y escribe <code>AUDITORIA</code>. No vuelve a leer <code>VENTA</code>, porque MySQL no deja que un trigger consulte la tabla que lo disparó.</li>
+  <li>Antes de insertar, rechaza la venta si el carro no está disponible.</li>
+  <li>Después de insertar, marca el carro como Vendido y escribe en AUDITORIA.</li>
+  <li>Después de borrar, deja el carro otra vez Disponible y también escribe en AUDITORIA.</li>
 </ul>
+<p>El trigger lo crea root. Por eso puede cambiar el estado del carro aunque el vendedor no tenga permiso de UPDATE sobre CARROS.</p>
 
-<h2>5. Dos capas de usuarios</h2>
+<h2>5. Los dos tipos de usuario</h2>
 <table>
-  <tr><th>Capa</th><th>Cuenta</th><th>Clave</th><th>Uso</th></tr>
-  <tr><td>Formulario</td><td>admin</td><td>admin123</td><td>Pantalla. Rol ADMIN.</td></tr>
-  <tr><td>Formulario</td><td>vendedor</td><td>vendedor123</td><td>Pantalla. Rol VENDEDOR.</td></tr>
-  <tr><td>Formulario</td><td>consulta</td><td>consulta123</td><td>Pantalla. Rol CONSULTA.</td></tr>
-  <tr><td>MySQL</td><td>admin_concesionario</td><td>Admin#2026</td><td>Todo dentro de concesionario_db. No es superusuario.</td></tr>
-  <tr><td>MySQL</td><td>vendedor_concesionario</td><td>Vendedor#2026</td><td>Lee, crea clientes, ventas y taller. No borra ventas.</td></tr>
-  <tr><td>MySQL</td><td>consulta_concesionario</td><td>Consulta#2026</td><td>Solo SELECT y el reporte.</td></tr>
-  <tr><td>MySQL</td><td>auth_concesionario</td><td>Auth#2026</td><td>Solo lee USUARIO, para comprobar el login.</td></tr>
-  <tr><td>MySQL</td><td>root</td><td>root</td><td>Solo init y backup. La aplicación no lo usa.</td></tr>
+  <tr><th>Dónde</th><th>Usuario</th><th>Clave</th><th>Para qué</th></tr>
+  <tr><td>Página</td><td>admin</td><td>admin123</td><td>Entra como administrador.</td></tr>
+  <tr><td>Página</td><td>vendedor</td><td>vendedor123</td><td>Entra como vendedor.</td></tr>
+  <tr><td>Página</td><td>consulta</td><td>consulta123</td><td>Entra solo a mirar.</td></tr>
+  <tr><td>MySQL</td><td>admin_concesionario</td><td>Admin#2026</td><td>Todo dentro de esta base. No es root.</td></tr>
+  <tr><td>MySQL</td><td>vendedor_concesionario</td><td>Vendedor#2026</td><td>Crea clientes, ventas y taller. No borra ventas.</td></tr>
+  <tr><td>MySQL</td><td>consulta_concesionario</td><td>Consulta#2026</td><td>Solo lectura y el reporte.</td></tr>
+  <tr><td>MySQL</td><td>auth_concesionario</td><td>Auth#2026</td><td>Solo lee la tabla USUARIO, para el login.</td></tr>
+  <tr><td>MySQL</td><td>root</td><td>root</td><td>Crear la base y el backup. La página no lo usa.</td></tr>
 </table>
-<p>Al entrar, Flask abre la conexión de ese rol. Host <code>%</code> significa TCP. En la consola hay que usar <code>mysql -h 127.0.0.1</code>. <code>localhost</code> por socket no coincide con <code>%</code>.</p>
+<p>En la consola hay que conectarse con <code>-h 127.0.0.1</code> y el puerto 3307. Si se usa localhost a secas, MySQL entra por el socket y esa cuenta no coincide.</p>
 
 <h2>6. Índices</h2>
-<p>No se duplican los UNIQUE ni las llaves foráneas: InnoDB ya los indexa. Por eso no hay un índice extra en cédula, chasis ni <code>VENTA.CarroID</code>.</p>
+<p>No se volvió a indexar la cédula ni el chasis, porque ya son UNIQUE. InnoDB también indexa las llaves foráneas.</p>
 <ul>
-  <li><code>idx_venta_fecha</code> sirve al reporte, que filtra por fecha. El EXPLAIN real sobre <code>VENTA</code> usa <code>type=range</code> y esa llave.</li>
-  <li><code>idx_carro_estado_marca</code> empieza por el estado porque la pantalla filtra por estado sin obligar a elegir marca.</li>
-  <li><code>idx_cliente_apellido</code> sirve a la búsqueda por apellido.</li>
-  <li><code>idx_manto_fecha</code> sirve a las consultas de taller por fecha.</li>
+  <li><code>idx_venta_fecha</code> lo usa el reporte, que filtra por fecha.</li>
+  <li><code>idx_carro_estado_marca</code> empieza por el estado, porque en la pantalla se puede filtrar solo por Disponible o Vendido.</li>
+  <li><code>idx_cliente_apellido</code> sirve para buscar por apellido.</li>
+  <li><code>idx_manto_fecha</code> sirve para buscar servicios de taller por fecha.</li>
 </ul>
 
-<h2>7. Arquitectura</h2>
-<p>Docker Compose tiene dos servicios. <code>db</code> es <code>mysql:8.4</code>, publicado en el puerto 3307 del equipo porque el 3306 ya lo usa otro MySQL. <code>web</code> es Python 3.12 con Gunicorn, publicado en el 8080 porque el 5000 lo ocupa AirPlay. Dentro de la red de Docker la aplicación sigue en el puerto 5000 y MySQL en el 3306.</p>
-<p>La primera vez, MySQL ejecuta <code>01_ddl.sql</code> hasta <code>07_indices.sql</code>. Un segundo <code>up</code> no los vuelve a correr. Para empezar de cero: <code>docker compose down -v</code> y luego <code>up --build</code>.</p>
-<p>Las plantillas están en <code>app/templates</code> y el estilo en <code>app/static/style.css</code>. La sesión lleva una cookie HttpOnly y SameSite=Lax, y cada formulario trae un token CSRF.</p>
+<h2>7. Cómo está montado</h2>
+<p>Docker tiene dos servicios. MySQL queda en el puerto 3307 de la máquina, porque el 3306 ya lo usa otro MySQL. La página queda en el 8080, porque el 5000 lo usa AirPlay. Adentro de Docker, MySQL sigue en 3306 y Flask en 5000.</p>
+<p>La primera vez se ejecutan los scripts del 01 al 07. Si se vuelve a levantar, no se vuelven a correr. Para empezar de cero: <code>docker compose down -v</code> y después <code>docker compose up --build</code>.</p>
+<p>Las pantallas están en <code>app/frontend/templates</code> y el estilo en <code>app/frontend/static/style.css</code>. El Python está en <code>app/backend/app.py</code>.</p>
 
-<h2>8. Cómo demostrar cada punto en el SGBD</h2>
-<p>Desde la raíz del proyecto, con Docker ya levantado:</p>
-<pre>./database/demo_permisos.sh
-./database/demo_procedimiento.sh
-./database/demo_transaccion.sh
-./database/demo_explain.sh
-./database/demo_backup.sh --confirmar</pre>
-<p><code>demo_permisos.sh</code> debe mostrar el error 1142 en un INSERT de consulta y el 1370 al llamar <code>sp_registrar_venta</code>. <code>demo_procedimiento.sh</code> vende el primer carro disponible, escribe auditoría y el segundo insert del mismo carro lo rechaza el trigger. <code>demo_backup.sh</code> pide <code>--confirmar</code> porque borra las ventas antes de restaurarlas.</p>
-<div class="warn">El backup no incluye las cuentas de MySQL. Esas viven en <code>06_usuarios.sql</code>. En el mismo servidor alcanza, porque los usuarios siguen existiendo. Si se restaura en un servidor nuevo, hay que volver a correr ese script.</div>
-
-<h2>9. Puertos y archivos que el docente va a buscar</h2>
-<ul>
-  <li>Aplicación: http://localhost:8080</li>
-  <li>MySQL desde el equipo: 127.0.0.1:3307, usuario root, clave root</li>
-  <li>Scripts: <code>database/01_ddl.sql</code> … <code>07_indices.sql</code></li>
-  <li>Backup: <code>database/concesionario_backup.sql</code></li>
-  <li>Código: <code>app/app.py</code></li>
-  <li>Ejemplo sin claves: <code>app/config.example.env</code></li>
-  <li>E-R: <code>docs/modelo_er.drawio</code></li>
-  <li>Documento de modelos y diccionario: <code>docs/documento_tecnico.pdf</code></li>
-</ul>
+<h2>8. Cómo mostrar cada cosa en MySQL</h2>
+<p>Con Docker ya prendido, desde la carpeta del proyecto:</p>
+<pre>./base_de_datos/demo_permisos.sh
+./base_de_datos/demo_procedimiento.sh
+./base_de_datos/demo_transaccion.sh
+./base_de_datos/demo_explain.sh
+./base_de_datos/demo_backup.sh --confirmar</pre>
+<p><code>demo_permisos.sh</code> tiene que mostrar el error 1142 cuando consulta intenta insertar, y el 1370 cuando intenta registrar una venta. <code>demo_backup.sh</code> pide <code>--confirmar</code> porque borra las ventas antes de restaurarlas.</p>
+<p>El backup no trae los usuarios de MySQL. Esos se crean con <code>06_usuarios.sql</code>. En este mismo servidor no hace falta volver a crearlos, porque siguen ahí.</p>
 </body>
 </html>

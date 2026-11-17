@@ -324,7 +324,7 @@ AUDITORIA(AuditoriaID PK, Tabla, Operacion, Registro_ID, Usuario_DB, Detalle, Fe
 <h3>Procedimientos</h3>
 <p><code>sp_registrar_venta(cliente, vendedor, carro, forma_pago)</code> rechaza una forma de pago desconocida, lee el precio y el estado del vehículo, y hace el <code>INSERT</code>. No pide el monto: lo copia de <code>Precio_Venta</code>. También es <code>INVOKER</code>, así que el vendedor necesita <code>INSERT</code> sobre <code>VENTA</code> y <code>SELECT</code> sobre <code>CARROS</code>. No se usó <code>SELECT … FOR UPDATE</code>: con <code>INVOKER</code> ese bloqueo exige privilegio <code>UPDATE</code> sobre <code>CARROS</code>, y el vendedor no lo tiene a propósito. La doble venta la cierran el <code>UNIQUE</code> de <code>CarroID</code> y el trigger <code>BEFORE</code>.</p>
 <p><code>sp_reporte_ventas(desde, hasta)</code> devuelve el detalle del periodo. La pantalla de reporte lo llama. El usuario de consulta tiene <code>EXECUTE</code> sobre este procedimiento y no sobre <code>sp_registrar_venta</code>.</p>
-<p><code>sp_anular_venta(venta_id)</code> es el tercer procedimiento. Abre una transacción con <code>START TRANSACTION</code>, borra la venta y hace <code>COMMIT</code>. Si la venta no existe, o el trigger falla, el manejador ejecuta <code>ROLLBACK</code>. Dentro de un procedimiento la palabra <code>BEGIN</code> abre el bloque de código, no la transacción; por eso la transacción se escribe <code>START TRANSACTION</code>. Fuera del procedimiento, en <code>database/demo_transaccion.sql</code>, se usa <code>BEGIN</code> como alias y un <code>ROLLBACK</code> que deja la base igual. La pantalla de anular venta llama a este procedimiento, no a un <code>DELETE</code> suelto. Solo el administrador puede ejecutarlo: a <code>vendedor_concesionario</code> se le concedió y luego se le revocó con <code>REVOKE</code>.</p>
+<p><code>sp_anular_venta(venta_id)</code> es el tercer procedimiento. Abre una transacción con <code>START TRANSACTION</code>, borra la venta y hace <code>COMMIT</code>. Si la venta no existe, o el trigger falla, el manejador ejecuta <code>ROLLBACK</code>. Dentro de un procedimiento la palabra <code>BEGIN</code> abre el bloque de código, no la transacción; por eso la transacción se escribe <code>START TRANSACTION</code>. Fuera del procedimiento, en <code>base_de_datos/demo_transaccion.sql</code>, se usa <code>BEGIN</code> como alias y un <code>ROLLBACK</code> que deja la base igual. La pantalla de anular venta llama a este procedimiento, no a un <code>DELETE</code> suelto. Solo el administrador puede ejecutarlo: a <code>vendedor_concesionario</code> se le concedió y luego se le revocó con <code>REVOKE</code>.</p>
 <h3>Triggers</h3>
 <p>Protegen la tabla, no un botón. Un <code>INSERT</code> desde la consola pasa por el mismo camino que la aplicación.</p>
 <ul>
@@ -350,7 +350,7 @@ AUDITORIA(AuditoriaID PK, Tabla, Operacion, Registro_ID, Usuario_DB, Detalle, Fe
 <p>Límite que hay que saber decir: el proceso de Flask conoce las cuatro claves, porque están en variables de entorno para poder abrir la conexión del rol. Si alguien toma el servidor de la aplicación, tiene esas claves. Lo que esta división sí impide es que un error del programa ejecute un <code>DELETE</code> con la sesión del vendedor: MySQL lo niega igual. En producción se quitan los usuarios de prueba de la pantalla de login, se rotan las claves y MySQL no se publica a internet; solo la red interna de Docker debería ver el puerto 3306.</p>
 
 <h2>10. Plan de respaldo</h2>
-<p>El respaldo de la entrega es lógico, con <code>mysqldump --single-transaction --routines --triggers --events --set-gtid-purged=OFF --databases concesionario_db</code>. <code>--single-transaction</code> saca una foto consistente de InnoDB sin bloquear las lecturas. El archivo queda en <code>database/concesionario_backup.sql</code> y se regenera con <code>./database/generar_backup.sh</code>.</p>
+<p>El respaldo de la entrega es lógico, con <code>mysqldump --single-transaction --routines --triggers --events --set-gtid-purged=OFF --databases concesionario_db</code>. <code>--single-transaction</code> saca una foto consistente de InnoDB sin bloquear las lecturas. El archivo queda en <code>base_de_datos/concesionario_backup.sql</code> y se regenera con <code>./base_de_datos/generar_backup.sh</code>.</p>
 <table>
   <tr><th></th><th>Decisión para este proyecto</th></tr>
   <tr><td>Qué se respalda</td><td>Esquema, datos, vistas, procedimientos y triggers de <code>concesionario_db</code></td></tr>
@@ -359,7 +359,7 @@ AUDITORIA(AuditoriaID PK, Tabla, Operacion, Registro_ID, Usuario_DB, Detalle, Fe
   <tr><td>RPO</td><td>24 horas con solo el dump. Para perder menos haría falta binlog y recuperación a un punto en el tiempo; no está montado en la demo</td></tr>
   <tr><td>RTO</td><td>Menos de 15 minutos. La base de prueba es pequeña y restaurar es volver a ejecutar el archivo</td></tr>
   <tr><td>Dónde guardarlo</td><td>Otra máquina o un disco distinto al del servidor. Un dump al lado del dato único no es respaldo</td></tr>
-  <tr><td>Prueba</td><td><code>./database/demo_backup.sh --confirmar</code> borra <code>VENTA</code> y restaura el archivo. El conteo vuelve al de la carga inicial</td></tr>
+  <tr><td>Prueba</td><td><code>./base_de_datos/demo_backup.sh --confirmar</code> borra <code>VENTA</code> y restaura el archivo. El conteo vuelve al de la carga inicial</td></tr>
 </table>
 <p>Responsable de tomar y probar el respaldo: el rol administrador del equipo, no el vendedor. Una vez al mes hay que restaurar en un servidor vacío, no solo mirar que el archivo pese más de cero. Servidor nuevo: restaurar el dump y después correr <code>06_usuarios.sql</code>. Mismo servidor, datos borrados por error: basta el dump, las cuentas siguen.</p>
 
@@ -379,7 +379,7 @@ AUDITORIA(AuditoriaID PK, Tabla, Operacion, Registro_ID, Usuario_DB, Detalle, Fe
   <li>Antes: <code>type = ALL</code>, <code>key = NULL</code>, <code>rows</code> cerca del total de la tabla. MySQL va a mirar todas las filas.</li>
   <li>Después: <code>type = ref</code>, <code>key = idx_demo_fecha</code>, <code>rows</code> mucho menor. Entra por el índice y solo revisa las filas de esa fecha.</li>
 </ul>
-<p>El resultado concreto de la ejecución queda en la sección 14, copiado de la corrida de <code>./database/demo_explain.sh</code>.</p>
+<p>El resultado concreto de la ejecución queda en la sección 14, copiado de la corrida de <code>./base_de_datos/demo_explain.sh</code>.</p>
 
 <h2>12. Arquitectura de la aplicación</h2>
 <div class="fig">
@@ -405,7 +405,7 @@ AUDITORIA(AuditoriaID PK, Tabla, Operacion, Registro_ID, Usuario_DB, Detalle, Fe
 </svg>
 <p class="caption">Figura 2. Cada petición autenticada usa la cuenta MySQL del rol, no una cuenta única de la aplicación.</p>
 </div>
-<p>El código está en <code>app/app.py</code>. No hay ORM: el SQL que se sustenta es el que está escrito en las rutas. Gunicorn levanta dos procesos. La sesión firma la cookie con <code>SECRET_KEY</code>; el rol no viaja en un campo que el navegador pueda editar sin invalidar la firma.</p>
+<p>El código está en <code>app/backend/app.py</code>. Las pantallas están en <code>app/frontend</code>. No hay ORM: el SQL que se sustenta es el que está escrito en las rutas. Gunicorn levanta dos procesos. La sesión firma la cookie con <code>SECRET_KEY</code>; el rol no viaja en un campo que el navegador pueda editar sin invalidar la firma.</p>
 <p>Matriz que aplica el programa, y que las cuentas de la sección 9 vuelven a exigir:</p>
 <table>
   <tr><th>Módulo</th><th>Administrador</th><th>Vendedor</th><th>Consulta</th></tr>
@@ -417,7 +417,7 @@ AUDITORIA(AuditoriaID PK, Tabla, Operacion, Registro_ID, Usuario_DB, Detalle, Fe
   <tr><td>Auditoría</td><td>Ver</td><td>No</td><td>No</td></tr>
 </table>
 <p>Registrar una venta no hace <code>INSERT</code> desde Python. La ruta llama <code>CALL sp_registrar_venta(...)</code>. El procedimiento escribe <code>VENTA</code>, el trigger <code>BEFORE</code> valida, el trigger <code>AFTER</code> cambia <code>CARROS.Estado_Inventario</code> y deja el rastro. Anular la venta, solo el administrador, dispara <code>trg_venta_after_delete</code>. El estado del vehículo no tiene campo en el formulario: si se pudiera digitar “Vendido”, el trigger y la pantalla se contradirían.</p>
-<p>El archivo de ejemplo <code>app/config.example.env</code> no trae claves. <code>docker-compose.yml</code> sí trae las de la práctica, porque el enunciado pide un comando único y los usuarios de prueba publicados en el README.</p>
+<p>El archivo de ejemplo <code>app/backend/config.example.env</code> no trae claves. <code>docker-compose.yml</code> sí trae las de la práctica, porque el enunciado pide un comando único y los usuarios de prueba publicados en el README.</p>
 
 <h2>13. Manual de instalación</h2>
 <h3>Con Docker, que es la vía de la entrega</h3>
@@ -426,29 +426,29 @@ AUDITORIA(AuditoriaID PK, Tabla, Operacion, Registro_ID, Usuario_DB, Detalle, Fe
   <li>En la raíz del repositorio: <code>docker compose up --build</code>.</li>
   <li>Abrir http://localhost:8080. MySQL queda en <code>127.0.0.1:3307</code> (usuario <code>root</code>, clave <code>root</code>). Esos puertos evitan el MySQL que ya escucha en 3306 y AirPlay en el 5000.</li>
   <li>La primera vez se ejecutan, en orden, <code>01_ddl.sql</code> … <code>07_indices.sql</code>.</li>
-  <li>Generar el backup de la sustentación: <code>./database/generar_backup.sh</code>.</li>
+  <li>Generar el backup de la sustentación: <code>./base_de_datos/generar_backup.sh</code>.</li>
 </ol>
 <p>Para volver a la carga inicial, incluyendo el borrado de ventas hechas en el ensayo: <code>docker compose down -v</code> y otra vez <code>docker compose up --build</code>. Sin <code>-v</code> el volumen sigue y los scripts no se repiten.</p>
 <h3>Sin Docker</h3>
 <p>Hace falta MySQL 8 o superior y Python 3.11+. Si el binlog está activo, el servidor debe tener <code>log_bin_trust_function_creators = 1</code> antes de crear triggers, o hay que crearlos con una cuenta que tenga el privilegio. Luego:</p>
-<pre>mysql -h 127.0.0.1 -uroot -p &lt; database/01_ddl.sql
-mysql -h 127.0.0.1 -uroot -p &lt; database/02_dml.sql
-mysql -h 127.0.0.1 -uroot -p &lt; database/03_vistas.sql
-mysql -h 127.0.0.1 -uroot -p &lt; database/04_procedimientos.sql
-mysql -h 127.0.0.1 -uroot -p &lt; database/05_triggers.sql
-mysql -h 127.0.0.1 -uroot -p &lt; database/06_usuarios.sql
-mysql -h 127.0.0.1 -uroot -p &lt; database/07_indices.sql</pre>
+<pre>mysql -h 127.0.0.1 -uroot -p &lt; base_de_datos/01_ddl.sql
+mysql -h 127.0.0.1 -uroot -p &lt; base_de_datos/02_dml.sql
+mysql -h 127.0.0.1 -uroot -p &lt; base_de_datos/03_vistas.sql
+mysql -h 127.0.0.1 -uroot -p &lt; base_de_datos/04_procedimientos.sql
+mysql -h 127.0.0.1 -uroot -p &lt; base_de_datos/05_triggers.sql
+mysql -h 127.0.0.1 -uroot -p &lt; base_de_datos/06_usuarios.sql
+mysql -h 127.0.0.1 -uroot -p &lt; base_de_datos/07_indices.sql</pre>
 <p>En <code>app/</code>: crear un entorno, <code>pip install -r requirements.txt</code>, copiar <code>config.example.env</code> a <code>.env</code>, completar las claves y ejecutar <code>flask --app app run --port 8080</code>.</p>
 <h3>Comprobación rápida</h3>
 <ul>
   <li>Login <code>admin</code> / <code>admin123</code>, <code>vendedor</code> / <code>vendedor123</code>, <code>consulta</code> / <code>consulta123</code>.</li>
   <li>El reporte, con fechas del 1 de enero al 31 de diciembre de 2026, muestra las ventas de mayo.</li>
-  <li><code>./database/demo_permisos.sh</code> termina con el <code>INSERT</code> rechazado.</li>
-  <li><code>./database/demo_procedimiento.sh</code> deja una fila en <code>AUDITORIA</code> y el segundo insert lo rechaza el trigger.</li>
+  <li><code>./base_de_datos/demo_permisos.sh</code> termina con el <code>INSERT</code> rechazado.</li>
+  <li><code>./base_de_datos/demo_procedimiento.sh</code> deja una fila en <code>AUDITORIA</code> y el segundo insert lo rechaza el trigger.</li>
 </ul>
 
 <h2>14. Resultado de EXPLAIN</h2>
-<p>Salida real de <code>./database/demo_explain.sh</code> el 10 de noviembre de 2026, sobre el MySQL 8.4 del Compose.</p>
+<p>Salida real de <code>./base_de_datos/demo_explain.sh</code> el 10 de noviembre de 2026, sobre el MySQL 8.4 del Compose.</p>
 <p>Consulta del reporte sobre <code>VENTA</code>, con <code>idx_venta_fecha</code> ya creado. El plan entra al índice (<code>type = range</code>, <code>key = idx_venta_fecha</code>). <code>rows = 4</code> porque en ese momento las ventas caían todas dentro de 2026: el rango cubre la tabla, pero no la recorre como <code>ALL</code>.</p>
 <pre>type: range
 possible_keys: idx_venta_fecha

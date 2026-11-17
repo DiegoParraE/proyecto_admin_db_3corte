@@ -1,6 +1,6 @@
 -- Backup logico de concesionario_db para la sustentacion.
--- Generado con database/generar_backup.sh (mysqldump --routines --triggers).
--- Restaurar: ./database/demo_backup.sh --confirmar
+-- Generado con base_de_datos/generar_backup.sh (mysqldump --routines --triggers).
+-- Restaurar: ./base_de_datos/demo_backup.sh --confirmar
 
 -- MySQL dump 10.13  Distrib 8.4.13, for Linux (x86_64)
 --

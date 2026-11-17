@@ -22,7 +22,7 @@ docker compose up --build
 
 El puerto 3306 de esta máquina ya lo usa otro MySQL, y el 5000 lo toma AirPlay. Por eso Compose publica 3307 y 8080. Dentro de la red de Docker no cambia nada.
 
-La primera vez MySQL ejecuta `database/01_ddl.sql` … `07_indices.sql` y carga los datos. Si ya existe el volumen y quieres empezar de cero:
+La primera vez MySQL ejecuta `base_de_datos/01_ddl.sql` … `07_indices.sql` y carga los datos. Si ya existe el volumen y quieres empezar de cero:
 
 ```bash
 docker compose down -v
@@ -55,21 +55,20 @@ Conéctate por TCP (`-h 127.0.0.1`). El host de estas cuentas es `%`; por socket
 | `auth_concesionario` | `Auth#2026` | Solo lee `USUARIO`, para el login |
 | `root` | `root` | Administración del servidor y el backup |
 
-`app/config.example.env` es la plantilla sin credenciales. Las claves de esta tabla están en `docker-compose.yml` porque el enunciado pide levantar todo con un comando y publicar los usuarios de prueba. No son claves de producción.
+`app/backend/config.example.env` es la plantilla sin credenciales. Las claves de esta tabla están en `docker-compose.yml` porque el enunciado pide levantar todo con un comando y publicar los usuarios de prueba. No son claves de producción.
 
 ## Qué hay en el repositorio
 
-- `database/01_ddl.sql` a `07_indices.sql`: carga ordenada
-- `database/concesionario_backup.sql`: backup lógico (se genera con el script de abajo)
-- `database/demo_permisos.sh`, `demo_procedimiento.sh`, `demo_explain.sh`, `demo_backup.sh`, `demo_transaccion.sh`: la sustentación en el SGBD, incluida una transacción con `BEGIN` y `ROLLBACK`
+- `base_de_datos/`: scripts `01_ddl.sql` a `07_indices.sql`, el backup y las demos
+- `app/frontend/`: pantallas HTML y el CSS
+- `app/backend/`: Flask (`app.py`), dependencias y la configuración de ejemplo
 - `docs/modelo_er.drawio`: modelo entidad-relación para abrir en draw.io
-- `app/`: formulario web
 - `docs/documento_tecnico.pdf`: documento técnico
 
 Después del primer arranque, genera el backup que vas a restaurar en vivo:
 
 ```bash
-./database/generar_backup.sh
+./base_de_datos/generar_backup.sh
 ```
 
 ## Guion de sustentación (15 + 5)
@@ -80,18 +79,18 @@ Ensayen con el reloj. Todos hablan.
 2. **Aplicación (4 min).** Entren como `admin`. Creen un cliente. Entren como `vendedor` / `vendedor123` y registren una venta del Chevrolet Onix: el monto no se digita y el vehículo pasa a Vendido. Entren como `consulta` / `consulta123` y muestren que no aparece «Nuevo». Abran Reporte con el rango 1 ene 2026 – 31 dic 2026 (las ventas de prueba son de mayo).
 3. **SGBD (4 min).** En otra terminal, desde la raíz del repo:
    ```bash
-   ./database/demo_permisos.sh
-   ./database/demo_procedimiento.sh
+   ./base_de_datos/demo_permisos.sh
+   ./base_de_datos/demo_procedimiento.sh
    ```
    Lo primero debe mostrar `INSERT` denegado. Lo segundo vende un carro, escribe `AUDITORIA` y el segundo `INSERT` lo rechaza el trigger.
 4. **Backup (2 min).**
    ```bash
-   ./database/demo_backup.sh --confirmar
+   ./base_de_datos/demo_backup.sh --confirmar
    ```
    Borra las ventas (el conteo queda en 0) y el backup las devuelve.
 5. **EXPLAIN (2 min).**
    ```bash
-   ./database/demo_explain.sh
+   ./base_de_datos/demo_explain.sh
    ```
    En `VENTA` el plan ya usa `idx_venta_fecha` (`type = range`). El contraste grande está en la tabla de laboratorio de 5000 filas: antes `type = ALL`, `key = NULL`, 5000 filas; después `type = ref`, `key = idx_demo_fecha`, unas 6 filas. El script borra esa tabla al final.
 6. **Preguntas (5 min).** Cada quien responde lo que construyó. Abajo hay una lista corta para repartirse.
@@ -112,26 +111,26 @@ Ensayen con el reloj. Todos hablan.
 Hace falta MySQL 8 y Python 3.11+.
 
 ```bash
-mysql -h 127.0.0.1 -uroot -p < database/01_ddl.sql
-mysql -h 127.0.0.1 -uroot -p < database/02_dml.sql
-mysql -h 127.0.0.1 -uroot -p < database/03_vistas.sql
-mysql -h 127.0.0.1 -uroot -p < database/04_procedimientos.sql
-mysql -h 127.0.0.1 -uroot -p < database/05_triggers.sql
-mysql -h 127.0.0.1 -uroot -p < database/06_usuarios.sql
-mysql -h 127.0.0.1 -uroot -p < database/07_indices.sql
+mysql -h 127.0.0.1 -uroot -p < base_de_datos/01_ddl.sql
+mysql -h 127.0.0.1 -uroot -p < base_de_datos/02_dml.sql
+mysql -h 127.0.0.1 -uroot -p < base_de_datos/03_vistas.sql
+mysql -h 127.0.0.1 -uroot -p < base_de_datos/04_procedimientos.sql
+mysql -h 127.0.0.1 -uroot -p < base_de_datos/05_triggers.sql
+mysql -h 127.0.0.1 -uroot -p < base_de_datos/06_usuarios.sql
+mysql -h 127.0.0.1 -uroot -p < base_de_datos/07_indices.sql
 ```
 
 Si el servidor tiene el binlog prendido y rechaza el trigger, activen `log_bin_trust_function_creators=1` o créenlos como administrador.
 
 ```bash
-cd app
+cd app/backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp config.example.env .env
 ```
 
-Completen `app/.env` con las claves reales de su MySQL y ejecuten:
+Completen `app/backend/.env` con las claves reales de su MySQL y ejecuten:
 
 ```bash
 set -a

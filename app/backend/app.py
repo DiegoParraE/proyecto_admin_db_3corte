@@ -1,8 +1,7 @@
-"""Concesionario: gestion de las sedes de Cali, Medellin y Bogota.
+"""Concesionario. Flask se conecta directo a MySQL, sin API.
 
-Cada rol de la sesion abre MySQL con una cuenta distinta (06_usuarios.sql).
-El formulario pide la clave de la aplicacion; esa clave no es la de MySQL.
-Las consultas van con parametros %s. No se concatena texto del usuario al SQL.
+La clave del formulario no es la clave de MySQL.
+Las consultas usan %s para no armar el SQL con texto del usuario.
 """
 
 import binascii
@@ -12,6 +11,7 @@ import os
 import secrets
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 
 import pymysql
 from flask import (
@@ -26,7 +26,12 @@ from flask import (
     url_for,
 )
 
-app = Flask(__name__)
+CARPETA_APP = Path(__file__).resolve().parent.parent
+app = Flask(
+    __name__,
+    template_folder=str(CARPETA_APP / "frontend" / "templates"),
+    static_folder=str(CARPETA_APP / "frontend" / "static"),
+)
 app.secret_key = os.environ["SECRET_KEY"]
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
 

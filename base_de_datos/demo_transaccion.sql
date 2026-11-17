@@ -1,6 +1,6 @@
 -- Transaccion explicita para la sustentacion.
 -- Fuera de un procedimiento, BEGIN es alias de START TRANSACTION.
--- Uso: ./database/demo_transaccion.sh
+-- Uso: ./base_de_datos/demo_transaccion.sh
 
 USE concesionario_db;
 

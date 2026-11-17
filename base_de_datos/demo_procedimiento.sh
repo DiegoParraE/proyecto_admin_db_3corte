@@ -1,6 +1,6 @@
 #!/bin/sh
 # Sustentacion: ejecutar sp_registrar_venta y mostrar el trigger.
-# Ejecutar desde la raiz: ./database/demo_procedimiento.sh
+# Ejecutar desde la raiz: ./base_de_datos/demo_procedimiento.sh
 set -eu
 cd "$(dirname "$0")/.."
 

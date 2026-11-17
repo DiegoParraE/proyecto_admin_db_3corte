@@ -1,5 +1,5 @@
 # Practica academica: las claves de abajo son las de los usuarios de prueba.
-# La plantilla sin credenciales esta en app/config.example.env.
+# La plantilla sin credenciales esta en app/backend/config.example.env.
 
 services:
   db:
@@ -16,13 +16,13 @@ services:
       - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
-      - ./database/01_ddl.sql:/docker-entrypoint-initdb.d/01_ddl.sql:ro
-      - ./database/02_dml.sql:/docker-entrypoint-initdb.d/02_dml.sql:ro
-      - ./database/03_vistas.sql:/docker-entrypoint-initdb.d/03_vistas.sql:ro
-      - ./database/04_procedimientos.sql:/docker-entrypoint-initdb.d/04_procedimientos.sql:ro
-      - ./database/05_triggers.sql:/docker-entrypoint-initdb.d/05_triggers.sql:ro
-      - ./database/06_usuarios.sql:/docker-entrypoint-initdb.d/06_usuarios.sql:ro
-      - ./database/07_indices.sql:/docker-entrypoint-initdb.d/07_indices.sql:ro
+      - ./base_de_datos/01_ddl.sql:/docker-entrypoint-initdb.d/01_ddl.sql:ro
+      - ./base_de_datos/02_dml.sql:/docker-entrypoint-initdb.d/02_dml.sql:ro
+      - ./base_de_datos/03_vistas.sql:/docker-entrypoint-initdb.d/03_vistas.sql:ro
+      - ./base_de_datos/04_procedimientos.sql:/docker-entrypoint-initdb.d/04_procedimientos.sql:ro
+      - ./base_de_datos/05_triggers.sql:/docker-entrypoint-initdb.d/05_triggers.sql:ro
+      - ./base_de_datos/06_usuarios.sql:/docker-entrypoint-initdb.d/06_usuarios.sql:ro
+      - ./base_de_datos/07_indices.sql:/docker-entrypoint-initdb.d/07_indices.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
       interval: 5s
@@ -46,7 +46,7 @@ services:
       VENDEDOR_DB_PASSWORD: "Vendedor#2026"
       CONSULTA_DB_USER: consulta_concesionario
       CONSULTA_DB_PASSWORD: "Consulta#2026"
-      SECRET_KEY: nortesur-demo-secret
+      SECRET_KEY: demo-concesionario-2026
     depends_on:
       db:
         condition: service_healthy

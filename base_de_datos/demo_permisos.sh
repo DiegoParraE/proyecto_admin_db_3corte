@@ -1,6 +1,6 @@
 #!/bin/sh
 # Sustentacion, minuto de administracion: un usuario sin permiso.
-# Ejecutar desde la raiz del repositorio: ./database/demo_permisos.sh
+# Ejecutar desde la raiz del repositorio: ./base_de_datos/demo_permisos.sh
 set -eu
 cd "$(dirname "$0")/.."
 
