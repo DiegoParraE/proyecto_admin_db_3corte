@@ -81,9 +81,9 @@ INSERT INTO MANTENIMIENTO (MantenimientoID, CarroID, ClientID, VendedorID, Fecha
 --   vendedor / vendedor123
 --   consulta / consulta123
 INSERT INTO USUARIO (UsuarioID, Username, Password_Hash, Rol, Nombre_Completo, Activo) VALUES
-  (1, 'admin', 'pbkdf2_sha256$260000$sigcon-admin$563befe9de0a58d78ff2df19208f16f1bb1a98650848ab9d564c39eb1b376a61', 'ADMIN', 'Ana Administradora', 1),
-  (2, 'vendedor', 'pbkdf2_sha256$260000$sigcon-vendedor$fbfd0d36afcae47523771d416e90a6c15c57b02292858b0822c39849307c7166', 'VENDEDOR', 'Pedro Perez', 1),
-  (3, 'consulta', 'pbkdf2_sha256$260000$sigcon-consulta$c99efca73fdef2e45381fdd59f6a936b5875a2dc73a826f11ddbf549ca18b84c', 'CONSULTA', 'Laura Consulta', 1);
+  (1, 'admin', 'pbkdf2_sha256$260000$sigcon-admin$563befe9de0a58d78ff2df19208f16f1bb1a98650848ab9d564c39eb1b376a61', 'ADMIN', 'Diego Parra', 1),
+  (2, 'vendedor', 'pbkdf2_sha256$260000$sigcon-vendedor$fbfd0d36afcae47523771d416e90a6c15c57b02292858b0822c39849307c7166', 'VENDEDOR', 'Edison Bohorquez', 1),
+  (3, 'consulta', 'pbkdf2_sha256$260000$sigcon-consulta$c99efca73fdef2e45381fdd59f6a936b5875a2dc73a826f11ddbf549ca18b84c', 'CONSULTA', 'Fernando Benitez', 1);
 
 ALTER TABLE SEDE AUTO_INCREMENT = 4;
 ALTER TABLE CLIENTE AUTO_INCREMENT = 21;
