@@ -84,9 +84,11 @@ base_de_datos/
   07_indices.sql
   concesionario_backup.sql
   demo_*.sh          pruebas de permisos, venta, transacción, EXPLAIN y backup
+  pruebas_mysql_workbench.sql   batería para correr en MySQL Workbench
 docs/
   Manual_de_usuario.pdf
   Manual_tecnico.pdf
+  actividad_herramienta_case.md   investigación de la herramienta CASE
 docker-compose.yml
 ```
 
@@ -123,6 +125,14 @@ Con la base ya levantada, desde la raíz:
 - `docs/Manual_tecnico.pdf`: carpetas, puertos y cómo se conecta Flask con MySQL.
 
 El documento de presentación, el que repasa cada requisito del docente, no va en el repositorio. Quedó en Descargas, con el nombre `Documento_presentacion_Administracion_de_Bases_de_Datos.pdf`.
+
+## Actividad adicional: herramienta CASE
+
+La investigación está en `docs/actividad_herramienta_case.md`. La herramienta elegida es MySQL Workbench. Con la base ya levantada, el script de pruebas se abre en Workbench conectado como `admin_concesionario` por el puerto `3307`:
+
+`base_de_datos/pruebas_mysql_workbench.sql`
+
+Ese archivo no se carga al crear el contenedor. Al terminar borra la tabla y el procedimiento de apoyo. La prueba del usuario `consulta_concesionario` y el Visual Explain quedan explicados en el mismo documento.
 
 ## Sin Docker
 
