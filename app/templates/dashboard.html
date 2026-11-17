@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Inicio · Concesionario{% endblock %}
+{% block contenido %}
+<header class="page-head">
+  <div>
+    <h1>Inicio</h1>
+    <p>Resumen de Cali, Medellín y Bogotá.</p>
+  </div>
+  <a class="btn" href="{{ url_for('reporte') }}">Ver reporte</a>
+</header>
+<section class="cards">
+  <article class="card-wide"><span>Total vendido</span><strong>{{ totales.total|cop }}</strong></article>
+  <article><span>Carros disponibles</span><strong>{{ totales.disponibles }}</strong></article>
+  <article><span>Carros vendidos</span><strong>{{ totales.vendidos }}</strong></article>
+  <article><span>Clientes</span><strong>{{ totales.clientes }}</strong></article>
+  <article><span>Ventas</span><strong>{{ totales.ventas }}</strong></article>
+</section>
+<section class="panel">
+  <h2>Últimas ventas</h2>
+  {% if recientes %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Vehículo</th><th>Monto</th></tr>
+      </thead>
+      <tbody>
+        {% for fila in recientes %}
+        <tr>
+          <td>{{ fila.Fecha_Venta|fecha }}</td>
+          <td>{{ fila.Cliente }}</td>
+          <td>{{ fila.Vendedor }}</td>
+          <td>{{ fila.Marca }} {{ fila.Modelo }}</td>
+          <td>{{ fila.Monto_Total|cop }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Todavía no hay ventas.</p>
+  {% endif %}
+</section>
+{% endblock %}

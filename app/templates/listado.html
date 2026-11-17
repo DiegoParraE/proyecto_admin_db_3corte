@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }} · Concesionario{% endblock %}
+{% block contenido %}
+<header class="page-head">
+  <div>
+    <h1>{{ titulo }}</h1>
+    {% if descripcion %}<p>{{ descripcion }}</p>{% endif %}
+  </div>
+  {% if puede(modulo, 'crear') %}
+  <a class="btn" href="{{ url_nuevo }}">Agregar</a>
+  {% endif %}
+</header>
+{% if buscar %}
+<form class="filters" method="get">
+  <input name="q" value="{{ q or '' }}" placeholder="{{ placeholder }}">
+  <button class="btn" type="submit">Buscar</button>
+</form>
+{% endif %}
+<section class="panel">
+  {% if filas %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          {% for clave, etiqueta, formato in columnas %}
+          <th>{{ etiqueta }}</th>
+          {% endfor %}
+          {% if puede(modulo, 'editar') or puede(modulo, 'eliminar') %}
+          <th></th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in filas %}
+        <tr>
+          {% for clave, etiqueta, formato in columnas %}
+          <td>
+            {% if formato == 'cop' %}{{ fila[clave]|cop }}
+            {% elif formato == 'fecha' %}{{ fila[clave]|fecha }}
+            {% elif formato == 'estado' %}<span class="estado estado-{{ fila[clave]|lower }}">{{ fila[clave] }}</span>
+            {% else %}{{ fila[clave] if fila[clave] is not none else '—' }}
+            {% endif %}
+          </td>
+          {% endfor %}
+          {% if puede(modulo, 'editar') or puede(modulo, 'eliminar') %}
+          <td class="acciones">
+            {% if endpoint_editar and puede(modulo, 'editar') %}
+            <a href="{{ url_for(endpoint_editar, registro_id=fila[id_campo]) }}">Editar</a>
+            {% endif %}
+            {% if endpoint_eliminar and puede(modulo, 'eliminar') %}
+            <form method="post" action="{{ url_for(endpoint_eliminar, registro_id=fila[id_campo]) }}" onsubmit="return confirm('¿Eliminar este registro?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf }}">
+              <button type="submit" class="link-danger">Eliminar</button>
+            </form>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No hay registros para mostrar.</p>
+  {% endif %}
+</section>
+{% endblock %}

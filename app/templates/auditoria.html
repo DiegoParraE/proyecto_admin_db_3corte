@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block titulo %}Auditoría · Concesionario{% endblock %}
+{% block contenido %}
+<header class="page-head">
+  <div>
+    <h1>Auditoría</h1>
+    <p>Aquí queda anotada cada venta nueva y cada venta anulada. Solo la ve el administrador.</p>
+  </div>
+</header>
+<section class="panel">
+  {% if filas %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Fecha</th><th>Dónde</th><th>Qué pasó</th><th>Número</th><th>Cuenta</th><th>Detalle</th></tr>
+      </thead>
+      <tbody>
+        {% for fila in filas %}
+        <tr>
+          <td>{{ fila.Fecha_Hora }}</td>
+          <td>{{ fila.Tabla }}</td>
+          <td>{{ fila.Operacion }}</td>
+          <td>{{ fila.Registro_ID }}</td>
+          <td>{{ fila.Usuario_DB }}</td>
+          <td>{{ fila.Detalle }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Todavía no hay movimientos. Registra una venta nueva para ver el primero.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Concesionario{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if usuario_actual %}
+<div class="app">
+  <aside class="side">
+    <a class="brand" href="{{ url_for('dashboard') }}">
+      <strong>Concesionario</strong>
+      <span>Cali, Medellín y Bogotá</span>
+    </a>
+    <nav class="menu">
+      <p>Día a día</p>
+      <a class="{{ 'active' if request.path == '/' else '' }}" href="{{ url_for('dashboard') }}">Inicio</a>
+      <a class="{{ 'active' if request.path.startswith('/carros') else '' }}" href="{{ url_for('carros') }}">Vehículos</a>
+      <a class="{{ 'active' if request.path.startswith('/ventas') else '' }}" href="{{ url_for('ventas') }}">Ventas</a>
+      <a class="{{ 'active' if request.path.startswith('/clientes') else '' }}" href="{{ url_for('clientes') }}">Clientes</a>
+      <a class="{{ 'active' if request.path.startswith('/mantenimientos') else '' }}" href="{{ url_for('mantenimientos') }}">Taller</a>
+      <a class="{{ 'active' if request.path.startswith('/reporte') else '' }}" href="{{ url_for('reporte') }}">Reporte</a>
+      <p>Empresa</p>
+      <a class="{{ 'active' if request.path.startswith('/sedes') else '' }}" href="{{ url_for('sedes') }}">Sedes</a>
+      <a class="{{ 'active' if request.path.startswith('/vendedores') else '' }}" href="{{ url_for('vendedores') }}">Vendedores</a>
+      <a class="{{ 'active' if request.path.startswith('/proveedores') else '' }}" href="{{ url_for('proveedores') }}">Proveedores</a>
+      {% if puede('auditoria', 'ver') %}
+      <p>Control</p>
+      <a class="{{ 'active' if request.path.startswith('/auditoria') else '' }}" href="{{ url_for('auditoria') }}">Auditoría</a>
+      {% endif %}
+    </nav>
+  </aside>
+  <div class="workspace">
+    <header class="topbar">
+      <div class="who">
+        <strong>{{ usuario_actual.nombre }}</strong>
+        <span class="rol">{{ nombre_rol }}</span>
+      </div>
+      <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}">
+        <button class="btn btn-ghost" type="submit">Salir</button>
+      </form>
+    </header>
+    <main class="content">
+      {% with mensajes = get_flashed_messages(with_categories=true) %}
+        {% for categoria, texto in mensajes %}
+          <p class="flash flash-{{ categoria }}">{{ texto }}</p>
+        {% endfor %}
+      {% endwith %}
+      {% block contenido %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+  {% with mensajes = get_flashed_messages(with_categories=true) %}
+    {% for categoria, texto in mensajes %}
+      <p class="flash flash-{{ categoria }} flash-login">{{ texto }}</p>
+    {% endfor %}
+  {% endwith %}
+  {% block publico %}{% endblock %}
+{% endif %}
+</body>
+</html>

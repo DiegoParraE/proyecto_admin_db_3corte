@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block titulo %}Entrar · Concesionario{% endblock %}
+{% block publico %}
+<main class="login">
+  <section class="login-card">
+    <p class="eyebrow">Cali · Medellín · Bogotá</p>
+    <h1>Concesionario</h1>
+    <p class="lead">Entra para ver los carros, las ventas y el taller.</p>
+    <form method="post" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <label>Usuario
+        <input name="username" autocomplete="username" required autofocus>
+      </label>
+      <label>Clave
+        <input name="clave" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+    <div class="demo-users">
+      <p>Prueba con uno de estos. Al pulsarlo se llena el formulario.</p>
+      <button type="button" class="cuenta" data-user="admin" data-clave="admin123">
+        <strong>admin</strong>
+        <code>admin123</code>
+        <span>Puede ver y cambiar todo</span>
+      </button>
+      <button type="button" class="cuenta" data-user="vendedor" data-clave="vendedor123">
+        <strong>vendedor</strong>
+        <code>vendedor123</code>
+        <span>Registra clientes y ventas</span>
+      </button>
+      <button type="button" class="cuenta" data-user="consulta" data-clave="consulta123">
+        <strong>consulta</strong>
+        <code>consulta123</code>
+        <span>Solo mira, no cambia nada</span>
+      </button>
+    </div>
+  </section>
+</main>
+<script>
+document.querySelectorAll(".cuenta").forEach(function (boton) {
+  boton.addEventListener("click", function () {
+    document.querySelector("[name=username]").value = boton.dataset.user;
+    document.querySelector("[name=clave]").value = boton.dataset.clave;
+    document.querySelector("[name=clave]").focus();
+  });
+});
+</script>
+{% endblock %}

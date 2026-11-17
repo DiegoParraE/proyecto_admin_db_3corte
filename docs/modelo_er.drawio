@@ -1,0 +1,61 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="sigcon-er" name="SIGCON ER">
+    <mxGraphModel dx="1100" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="700" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="sede" value="SEDE&#10;PK SedeID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2e26;fontColor=#ffffff;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="140" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="vendedor" value="VENDEDOR&#10;PK VendedorID&#10;FK SedeID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2e26;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="280" y="40" width="160" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="cliente" value="CLIENTE&#10;PK ClientID&#10;UK DNI" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2e26;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="540" y="40" width="150" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="carros" value="CARROS&#10;PK CarroID&#10;UK VIN · FK SedeID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2e26;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="40" y="220" width="170" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="cp" value="CARRO_PROVEEDOR&#10;N:M compra" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#8d3d1d;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="280" y="220" width="170" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="proveedor" value="PROVEEDOR&#10;PK ProveedorID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2e26;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="520" y="220" width="160" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="venta" value="VENTA&#10;PK VentaID&#10;UK CarroID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#8d3d1d;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="760" y="120" width="150" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="manto" value="MANTENIMIENTO&#10;PK MantenimientoID&#10;FK CarroID" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1a2e26;fontColor=#ffffff;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="180" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1" style="endArrow=block;html=1;strokeColor=#8d3d1d;" edge="1" parent="1" source="sede" target="vendedor">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e1l" value="1:N" style="edgeLabel;html=1;" vertex="1" connectable="0" parent="e1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" style="endArrow=block;html=1;strokeColor=#8d3d1d;" edge="1" parent="1" source="sede" target="carros">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" style="endArrow=block;html=1;strokeColor=#8d3d1d;" edge="1" parent="1" source="carros" target="cp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" style="endArrow=block;html=1;strokeColor=#8d3d1d;" edge="1" parent="1" source="proveedor" target="cp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" style="endArrow=block;html=1;strokeColor=#8d3d1d;" edge="1" parent="1" source="cliente" target="venta">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" style="endArrow=block;html=1;strokeColor=#8d3d1d;" edge="1" parent="1" source="vendedor" target="venta">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e7" style="endArrow=block;html=1;strokeColor=#8d3d1d;" edge="1" parent="1" source="carros" target="venta">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e8" style="endArrow=block;html=1;strokeColor=#8d3d1d;" edge="1" parent="1" source="carros" target="manto">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

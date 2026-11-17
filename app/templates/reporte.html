@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block titulo %}Reporte · Concesionario{% endblock %}
+{% block contenido %}
+<header class="page-head">
+  <div>
+    <h1>Reporte de ventas</h1>
+    <p>Elige las fechas. Arriba ves el total de cada ciudad y abajo el detalle.</p>
+  </div>
+</header>
+<form class="filters" method="get">
+  <label>Desde <input type="date" name="desde" value="{{ desde }}" required></label>
+  <label>Hasta <input type="date" name="hasta" value="{{ hasta }}" required></label>
+  <button class="btn" type="submit">Consultar</button>
+</form>
+<section class="cards">
+  {% for sede in resumen %}
+  <article>
+    <span>{{ sede.Nombre_Sede }}</span>
+    <strong>{{ sede.Total_Vendido|cop }}</strong>
+    <em>{% if sede.Cantidad_Ventas == 1 %}1 venta en el historial{% else %}{{ sede.Cantidad_Ventas }} ventas en el historial{% endif %}</em>
+  </article>
+  {% endfor %}
+</section>
+<section class="panel">
+  <h2>{{ filas|length }} ventas en este rango · {{ total|cop }}</h2>
+  {% if filas %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Vehículo</th><th>Sede</th><th>Pago</th><th>Monto</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in filas %}
+        <tr>
+          <td>{{ fila.Fecha_Venta|fecha }}</td>
+          <td>{{ fila.Cliente }}</td>
+          <td>{{ fila.Vendedor }}</td>
+          <td>{{ fila.Marca }} {{ fila.Modelo }} {{ fila.Anio }}</td>
+          <td>{{ fila.Sede }}</td>
+          <td>{{ fila.Forma_Pago }}</td>
+          <td>{{ fila.Monto_Total|cop }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No hay ventas entre esas fechas. Las de prueba son de mayo de 2026.</p>
+  {% endif %}
+</section>
+{% endblock %}

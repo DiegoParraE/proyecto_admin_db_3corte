@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }} · Concesionario{% endblock %}
+{% block contenido %}
+<header class="page-head">
+  <div>
+    <h1>{{ titulo }}</h1>
+    {% if descripcion %}<p>{{ descripcion }}</p>{% endif %}
+  </div>
+  <a class="btn btn-ghost" href="{{ volver }}">Volver</a>
+</header>
+<form method="post" class="form-card stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf }}">
+  {% for item in campos %}
+    {% if item.tipo == 'info' %}
+      <p class="info-row"><span>{{ item.etiqueta }}</span> {{ item.valor }}</p>
+    {% elif item.tipo == 'select' %}
+      <label>{{ item.etiqueta }}
+        {% if item.opciones %}
+        <select name="{{ item.nombre }}" {% if item.requerido %}required{% endif %}>
+          {% for op in item.opciones %}
+          <option value="{{ op.valor }}" {% if op.valor|string == item.valor|string %}selected{% endif %}>{{ op.texto }}</option>
+          {% endfor %}
+        </select>
+        {% else %}
+        <span class="hint">No hay opciones disponibles.</span>
+        {% endif %}
+      </label>
+    {% elif item.tipo == 'textarea' %}
+      <label>{{ item.etiqueta }}
+        <textarea name="{{ item.nombre }}" rows="4" {% if item.requerido %}required{% endif %}>{{ item.valor }}</textarea>
+      </label>
+    {% else %}
+      <label>{{ item.etiqueta }}
+        <input type="{{ item.tipo }}" name="{{ item.nombre }}" value="{{ item.valor }}" {% if item.tipo == 'number' %}step="0.01" min="0"{% endif %} {% if item.requerido %}required{% endif %}>
+      </label>
+    {% endif %}
+  {% endfor %}
+  <button class="btn" type="submit">Guardar</button>
+</form>
+{% endblock %}

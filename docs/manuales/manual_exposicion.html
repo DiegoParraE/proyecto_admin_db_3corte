@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual de exposición — Concesionario</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+<section class="cover">
+  <div>
+    <p class="kicker">CTIC Teinco · Administración de Bases de Datos</p>
+    <h1>Manual para exponer</h1>
+    <p class="sub">Guion de 15 minutos de demostración y 5 de preguntas</p>
+    <div class="meta">
+      <p>Proyecto: Concesionario · Cali, Medellín y Bogotá</p>
+      <p>Estudiante: Diego Parra</p>
+    </div>
+  </div>
+  <p>Ensaya con el reloj. Habla de lo que se ve en pantalla y, cuando toque el SGBD, muestra el comando y el resultado. No leas los nombres de los archivos en voz alta salvo que el docente los pida.</p>
+</section>
+
+<h2>Antes de entrar</h2>
+<ol>
+  <li>Docker Desktop abierto.</li>
+  <li>En la carpeta del proyecto: <code>docker compose up --build</code>. Prueba http://localhost:8080.</li>
+  <li>Ten abiertos el navegador, una terminal en la raíz del proyecto y <code>docs/modelo_er.drawio</code>.</li>
+  <li>No registres una venta de ensayo el mismo día de la sustentación si quieres que los números sigan en 18 disponibles y 2 vendidas. Si ya lo hiciste, no pasa nada: explica que esa venta es tuya.</li>
+</ol>
+<div class="warn">El reporte de prueba usa fechas de 2026. En la exposición deja desde 2026-01-01 hasta 2026-12-31.</div>
+
+<h2>Minuto 0 a 3. Problema y modelo</h2>
+<p class="step">Qué decir</p>
+<p>El concesionario tiene tres sedes: Bogotá, Medellín y Cali. Antes, el inventario y las ventas estaban en hojas de cálculo. Un carro se podía vender dos veces y el precio de lista se confundía con el precio del día de la venta.</p>
+<p>Abre el diagrama. Señala, sin apurarte:</p>
+<ul>
+  <li>Una sede tiene varios vendedores y varios carros. Eso es 1:N.</li>
+  <li>Un carro lo puede suministrar un proveedor y un proveedor suministra varios carros. La tabla del medio, <code>CARRO_PROVEEDOR</code>, es la N:M y guarda el costo de esa compra.</li>
+  <li>Una venta pertenece a un cliente, a un vendedor y a un solo carro. El carro no se repite en ventas.</li>
+  <li><code>USUARIO</code> y <code>AUDITORIA</code> no son del negocio: una sirve para entrar y la otra la llena el trigger.</li>
+</ul>
+<p class="step">Frase de 3FN, si preguntan</p>
+<p>El teléfono de la sede no está copiado en el vendedor. El monto de la venta sí se guarda, porque es el precio de ese día. Si mañana cambia el precio del carro, la venta vieja no se mueve.</p>
+
+<h2>Minuto 3 a 7. La aplicación</h2>
+<p class="step">Admin</p>
+<ol>
+  <li>Entra como admin / admin123. En el ingreso puedes pulsar la tarjeta admin.</li>
+  <li>Muestra Inicio: 18 disponibles, 2 vendidos, 20 clientes, $150.000.000.</li>
+  <li>Ve a Clientes, pulsa Agregar y crea uno con una cédula que no exista, por ejemplo 1020999001. Di que la cédula es única.</li>
+  <li>Ve a Vehículos. Señala el chasis y que el estado no se edita a mano.</li>
+</ol>
+<p class="step">Vendedor</p>
+<ol>
+  <li>Sal y entra como vendedor / vendedor123.</li>
+  <li>Ve a Ventas, Agregar. Elige el cliente nuevo, a Pedro Perez, el Chevrolet Onix y Contado.</li>
+  <li>Di: el precio no se escribe. Lo toma el procedimiento <code>sp_registrar_venta</code>.</li>
+  <li>Guarda. Vuelve a Vehículos y muestra el Onix en Vendido. Di: eso lo hizo el trigger, no el formulario.</li>
+  <li>Muestra que no hay botón Eliminar en la venta y que no aparece Auditoría.</li>
+</ol>
+<p class="step">Consulta</p>
+<ol>
+  <li>Sal y entra como consulta / consulta123.</li>
+  <li>Muestra que no hay botón Agregar.</li>
+  <li>Abre Reporte con 1 de enero de 2026 a 31 de diciembre de 2026. Arriba están las tres ciudades. Abajo, el detalle, incluida la venta que acabas de hacer.</li>
+  <li>Di: el detalle lo devuelve <code>sp_reporte_ventas</code> y el resumen por ciudad lo lee de la vista <code>vw_ventas_por_sede</code>.</li>
+</ol>
+
+<h2>Minuto 7 a 11. Administración en MySQL</h2>
+<p>Deja el navegador a un lado. En la terminal, desde la carpeta del proyecto:</p>
+<pre>./database/demo_permisos.sh</pre>
+<p class="step">Qué decir</p>
+<p>Consulta intenta insertar un cliente y MySQL responde 1142, permiso denegado. Luego intenta registrar una venta y responde 1370, no puede ejecutar el procedimiento. La pantalla ya se lo impedía. El SGBD también se lo impide, porque la aplicación entra con <code>consulta_concesionario</code>, no con root.</p>
+<p>Si preguntan por REVOKE: a vendedor se le concedió borrar ventas y anularlas, y enseguida se le quitó. Por eso <code>sp_anular_venta</code> le da 1370.</p>
+<pre>./database/demo_procedimiento.sh</pre>
+<p class="step">Qué decir</p>
+<p>El vendedor llama <code>sp_registrar_venta</code>. El procedimiento abre una transacción, inserta y confirma. El trigger marca el carro vendido y escribe una fila en <code>AUDITORIA</code>. Un segundo insert del mismo carro lo rechaza el trigger, aunque alguien se salte la pantalla. El mensaje empieza por «Trigger:».</p>
+<p>Aclara las dos cuentas: <code>vendedor</code> entra al sitio. <code>vendedor_concesionario</code> entra a MySQL. No se mezclan.</p>
+
+<h2>Minuto 11 a 13. Backup</h2>
+<pre>./database/demo_backup.sh --confirmar</pre>
+<p class="step">Qué decir</p>
+<p>El script muestra las ventas, las borra y el conteo queda en cero. Luego restaura <code>concesionario_backup.sql</code> y las ventas de prueba vuelven. El backup se hizo con <code>mysqldump</code>, incluye rutinas y triggers, y no incluye los usuarios de MySQL. Esos están en <code>06_usuarios.sql</code>. En este mismo servidor no hace falta recrearlos.</p>
+<div class="warn">Este paso borra las ventas de la demostración y deja otra vez las dos ventas de mayo. Si lo corres antes de mostrar la aplicación, el Onix vuelve a Disponible. Haz el backup al final de la demo de pantallas.</div>
+
+<h2>Minuto 13 a 15. EXPLAIN</h2>
+<pre>./database/demo_explain.sh</pre>
+<p class="step">Qué decir</p>
+<p>En <code>VENTA</code> el plan ya usa <code>idx_venta_fecha</code>, tipo range, porque el reporte filtra por fecha. Para ver el antes y el después con claridad, el script crea una tabla de laboratorio de 5000 filas. Sin índice el plan es ALL, key NULL, 5000 filas. Con <code>idx_demo_fecha</code> pasa a ref y baja a unas 6 filas. Al terminar, el script borra esa tabla. No queda en la base del negocio.</p>
+<p>Si preguntan por qué no hay índice en la cédula o en el chasis: ya son UNIQUE, e InnoDB indexa también las llaves foráneas. Otro índice igual solo haría más lentos los insert.</p>
+<p>El índice de carros empieza por el estado porque la pantalla filtra por Disponible o Vendido sin obligar a elegir marca. El prefijo izquierdo tiene que ser esa columna.</p>
+
+<h2>Minuto 15 a 20. Preguntas que suelen hacer</h2>
+<table>
+  <tr><th>Pregunta</th><th>Respuesta corta</th></tr>
+  <tr><td>¿Qué diferencia hay entre vista, procedimiento y trigger?</td><td>La vista solo lee y no guarda datos. El procedimiento hace el trabajo cuando lo llamamos: toma el precio e inserta la venta. El trigger corre solo en cada insert o delete de VENTA, aunque nadie llame al procedimiento.</td></tr>
+  <tr><td>¿Por qué el trigger sí puede cambiar el carro y el vendedor no?</td><td>El procedimiento es INVOKER: usa los permisos de quien llama. El trigger lo creó root, así que puede hacer UPDATE en CARROS. El vendedor no tiene ese UPDATE, y no le hace falta.</td></tr>
+  <tr><td>¿Por qué BEGIN dentro del procedimiento no abre la transacción?</td><td>Dentro de un procedimiento, BEGIN abre el bloque. La transacción se abre con START TRANSACTION. Fuera, en demo_transaccion.sql, BEGIN sí es la transacción.</td></tr>
+  <tr><td>¿Por qué las dos ventas iniciales no están en auditoría?</td><td>El script de datos corre antes que el de triggers. El trigger solo ve lo que pasa después.</td></tr>
+  <tr><td>¿Dónde están las credenciales?</td><td>No están escritas en app.py. La plantilla vacía es config.example.env. Para la demo, Compose las pasa por variables de entorno. La aplicación nunca entra como root.</td></tr>
+  <tr><td>¿Cómo evitas inyección SQL?</td><td>Las consultas usan %s. PyMySQL envía el valor aparte del texto SQL.</td></tr>
+  <tr><td>¿Por qué Flask y no una API con React?</td><td>El enunciado pide conexión directa al SGBD. El navegador no puede abrir MySQL. Flask renderiza el HTML en el servidor y él sí abre la conexión.</td></tr>
+  <tr><td>¿Qué es el chasis?</td><td>Es el número único del carro. En la base la columna se llama VIN, que es el nombre técnico de ese número. En la pantalla se llama Chasis.</td></tr>
+  <tr><td>¿Qué pasa si consulta intenta insertar desde la consola?</td><td>Error 1142. Lo muestra demo_permisos.sh.</td></tr>
+  <tr><td>¿El backup trae los usuarios?</td><td>No. Trae tablas, datos, vistas, procedimientos y triggers. Los usuarios se crean con 06_usuarios.sql.</td></tr>
+</table>
+
+<h2>Si algo falla en vivo</h2>
+<ul>
+  <li>La página no abre: confirma que Docker está encendido y que el comando fue <code>docker compose up --build</code>. La dirección es el puerto 8080, no el 5000.</li>
+  <li>El reporte sale vacío: revisa que el año sea 2026.</li>
+  <li>No puedes vender el Onix: ya se vendió en un ensayo. Elige otro carro Disponible, por ejemplo el Sandero o el Spark.</li>
+  <li>La terminal dice que el socket no conecta: usa <code>-h 127.0.0.1</code> y el puerto 3307. Los scripts de demo ya lo hacen.</li>
+</ul>
+</body>
+</html>

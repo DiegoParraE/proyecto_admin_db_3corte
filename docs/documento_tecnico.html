@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Concesionario — Documento técnico</title>
+<style>
+  @page { size: letter; margin: 1.7cm 1.6cm 1.8cm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #1c1915; font-family: "Palatino Linotype", Palatino, Georgia, serif; font-size: 12pt; line-height: 1.45; }
+  h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 0.4em; }
+  h2 { font-size: 16pt; margin: 1.4em 0 0.4em; page-break-after: avoid; border-bottom: 1px solid #1a2e26; padding-bottom: 0.15em; }
+  h3 { font-size: 13pt; margin: 1em 0 0.3em; page-break-after: avoid; }
+  p { margin: 0.45em 0; }
+  ul, ol { margin: 0.3em 0 0.6em; }
+  li { margin: 0.15em 0; }
+  code { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 0.86em; }
+  table { width: 100%; border-collapse: collapse; margin: 0.6em 0 1em; page-break-inside: avoid; font-size: 10pt; }
+  th, td { border: 1px solid #cfc6b8; padding: 0.28em 0.4em; vertical-align: top; text-align: left; }
+  th { background: #1a2e26; color: #f6f1e8; font-weight: 600; }
+  .cover { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; page-break-after: always; }
+  .kicker { letter-spacing: 0.14em; text-transform: uppercase; font-size: 10pt; color: #8d3d1d; margin: 0; }
+  .rule { width: 4.5rem; height: 4px; background: #b5522a; margin: 1rem 0; }
+  .meta { width: 100%; margin-top: 2rem; }
+  .meta td { border: none; border-bottom: 1px solid #e3d9cb; padding: 0.45em 0.2em; }
+  .meta th { background: transparent; color: #5e564c; border: none; width: 32%; font-weight: 600; }
+  .note { background: #f8f1e4; border-left: 4px solid #b5522a; padding: 0.6em 0.8em; }
+  .small { font-size: 10.5pt; color: #3d3832; }
+  svg { width: 100%; height: auto; }
+  .fig { margin: 0.8em 0 1em; page-break-inside: avoid; }
+  .caption { font-size: 10pt; color: #5e564c; margin-top: 0.3em; }
+  pre { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 9pt; background: #f6f1e8; padding: 0.7em; white-space: pre-wrap; page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <p class="kicker">Proyecto integrador · Administración de bases de datos</p>
+  <div class="rule"></div>
+  <h1>Concesionario<br>Sistema de gestión para un concesionario de vehículos</h1>
+  <p>Documento técnico: problema, modelo, normalización, seguridad, respaldo, índices, arquitectura e instalación.</p>
+  <table class="meta">
+    <tr><th>Institución</th><td>CTIC Teinco</td></tr>
+    <tr><th>Programa</th><td>Ingeniería de Sistemas</td></tr>
+    <tr><th>Asignatura</th><td>Administración de bases de datos</td></tr>
+    <tr><th>Base de datos</th><td>concesionario_db · MySQL 8.4 · InnoDB</td></tr>
+    <tr><th>Fecha</th><td>Noviembre de 2026</td></tr>
+  </table>
+  <h3>Integrantes</h3>
+  <table>
+    <tr><th>Nombre</th><th>Código</th><th>Parte de la que responde en la sustentación</th></tr>
+    <tr><td>&nbsp;</td><td></td><td></td></tr>
+    <tr><td>&nbsp;</td><td></td><td></td></tr>
+    <tr><td>&nbsp;</td><td></td><td></td></tr>
+    <tr><td>&nbsp;</td><td></td><td></td></tr>
+  </table>
+  <p class="note">Completar los nombres y códigos de los dos integrantes. Equipos de máximo 2 estudiantes. El modelo de negocio sale del dump <code>concesionario_db</code> del 9 de noviembre de 2026.</p>
+</section>
+
+<h2>1. Problema</h2>
+<p>El concesionario opera tres sedes: Bogotá (Calle 100 # 15-30), Medellín (Carrera 43A # 1-50) y Cali (Avenida 6N # 25-40). Compra vehículos a proveedores, los ofrece en una sede, los vende un asesor y después puede hacerles mantenimiento. Ese flujo estaba repartido en hojas de cálculo. Ahí aparecen tres fallas concretas:</p>
+<ul>
+  <li>Un mismo número de chasis se puede anotar dos veces, o un carro ya vendido se ofrece de nuevo, porque nada impide el segundo registro.</li>
+  <li>El precio de lista y el precio de la venta viven en el mismo lugar. Si el lista cambia, se pierde lo que el cliente realmente pagó.</li>
+  <li>Cualquiera que abre el archivo puede borrar ventas, ver datos que no le corresponden o llevarse la única copia. No hay usuarios, ni respaldo, ni rastro de quién vendió.</li>
+</ul>
+<p>La aplicación guarda ese flujo en MySQL y lo opera con tres roles. El inventario deja de editarse a mano: una venta, hecha por el procedimiento o por un <code>INSERT</code> directo, dispara un trigger que marca el vehículo como vendido y escribe una fila de auditoría.</p>
+
+<h2>2. Alcance</h2>
+<p>Entra en esta entrega:</p>
+<ul>
+  <li>Sedes, clientes, vendedores, proveedores, vehículos, compra al proveedor, ventas y mantenimientos.</li>
+  <li>Login de la aplicación con administrador, vendedor y consulta.</li>
+  <li>Cuentas de MySQL con privilegios distintos, para la demostración en el SGBD.</li>
+  <li>Una vista de detalle, una vista de inventario disponible, una vista de ventas por sede, dos procedimientos y tres triggers.</li>
+  <li>Respaldo lógico y comparación de planes con <code>EXPLAIN</code>.</li>
+</ul>
+<p>Queda fuera: contabilidad, nómina, pasarela de pagos, aplicación móvil y cifrado de disco. El mantenimiento no cambia el estado del inventario: un carro vendido también entra a taller.</p>
+
+<h2>3. Justificación del SGBD</h2>
+<p>Se usa MySQL 8.4 con motor InnoDB. El modelo ya existía en MySQL 8/9 (el dump de origen es de MySQL 9.6) y el curso pide, en el mismo motor, usuarios, un procedimiento, un trigger, un respaldo y <code>EXPLAIN</code>. InnoDB cubre eso sin cambiar de producto:</p>
+<ul>
+  <li>Transacciones y llaves foráneas. Borrar una sede que todavía tiene vehículos falla, en vez de dejar vendedores huérfanos.</li>
+  <li>Procedimientos, triggers y vistas, que son parte de la sustentación.</li>
+  <li>Cuentas y <code>GRANT</code> por tabla y por rutina. El usuario de consulta puede leer y no puede insertar.</li>
+  <li><code>EXPLAIN</code> muestra si un índice entra al plan.</li>
+  <li>Hay imagen oficial de Docker, así el docente levanta la base con un comando.</li>
+</ul>
+<p>PostgreSQL también serviría (tiene lo mismo y un planificador más explícito). SQL Server también. No se migró porque el esquema, los datos y los nombres de restricción ya estaban probados en MySQL, y reescribirlos solo para cambiar de motor no aportaba al problema del concesionario.</p>
+
+<h2>4. Modelo entidad-relación</h2>
+<div class="fig">
+<svg viewBox="0 0 900 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Modelo entidad relación">
+  <rect width="900" height="430" fill="#f7f3ec"/>
+  <g font-family="Palatino, Georgia, serif" font-size="15" fill="#1c1915">
+    <g>
+      <rect x="30" y="30" width="150" height="64" rx="6" fill="#1a2e26"/>
+      <text x="105" y="58" text-anchor="middle" fill="#f6f1e8" font-size="16">SEDE</text>
+      <text x="105" y="78" text-anchor="middle" fill="#e7d7c4" font-size="11">PK SedeID</text>
+    </g>
+    <g>
+      <rect x="280" y="30" width="170" height="64" rx="6" fill="#1a2e26"/>
+      <text x="365" y="58" text-anchor="middle" fill="#f6f1e8" font-size="16">VENDEDOR</text>
+      <text x="365" y="78" text-anchor="middle" fill="#e7d7c4" font-size="11">PK VendedorID · FK SedeID</text>
+    </g>
+    <g>
+      <rect x="560" y="30" width="150" height="64" rx="6" fill="#1a2e26"/>
+      <text x="635" y="58" text-anchor="middle" fill="#f6f1e8" font-size="16">CLIENTE</text>
+      <text x="635" y="78" text-anchor="middle" fill="#e7d7c4" font-size="11">PK ClientID · UK DNI</text>
+    </g>
+    <g>
+      <rect x="30" y="180" width="150" height="64" rx="6" fill="#1a2e26"/>
+      <text x="105" y="208" text-anchor="middle" fill="#f6f1e8" font-size="16">CARROS</text>
+      <text x="105" y="228" text-anchor="middle" fill="#e7d7c4" font-size="11">PK CarroID · UK VIN</text>
+    </g>
+    <g>
+      <rect x="250" y="180" width="200" height="64" rx="6" fill="#8d3d1d"/>
+      <text x="350" y="208" text-anchor="middle" fill="#f6f1e8" font-size="16">CARRO_PROVEEDOR</text>
+      <text x="350" y="228" text-anchor="middle" fill="#f3d7cc" font-size="11">compra: carro y proveedor</text>
+    </g>
+    <g>
+      <rect x="520" y="180" width="170" height="64" rx="6" fill="#8d3d1d"/>
+      <text x="605" y="208" text-anchor="middle" fill="#f6f1e8" font-size="16">VENTA</text>
+      <text x="605" y="228" text-anchor="middle" fill="#f3d7cc" font-size="11">un carro, una venta</text>
+    </g>
+    <g>
+      <rect x="730" y="180" width="145" height="64" rx="6" fill="#1a2e26"/>
+      <text x="802" y="208" text-anchor="middle" fill="#f6f1e8" font-size="15">PROVEEDOR</text>
+      <text x="802" y="228" text-anchor="middle" fill="#e7d7c4" font-size="11">PK ProveedorID</text>
+    </g>
+    <g>
+      <rect x="250" y="320" width="200" height="70" rx="6" fill="#1a2e26"/>
+      <text x="350" y="350" text-anchor="middle" fill="#f6f1e8" font-size="16">MANTENIMIENTO</text>
+      <text x="350" y="370" text-anchor="middle" fill="#e7d7c4" font-size="11">carro obligatorio</text>
+    </g>
+  </g>
+  <g stroke="#8d3d1d" stroke-width="1.4" fill="#8d3d1d" font-family="Palatino, Georgia, serif" font-size="12">
+    <line x1="180" y1="62" x2="280" y2="62"/>
+    <text x="210" y="54">1 : N</text>
+    <line x1="105" y1="94" x2="105" y2="180"/>
+    <text x="112" y="140">1 : N</text>
+    <line x1="180" y1="212" x2="250" y2="212"/>
+    <text x="188" y="204">1 : N</text>
+    <line x1="450" y1="212" x2="520" y2="212"/>
+    <text x="458" y="204">N : 1</text>
+    <line x1="690" y1="212" x2="730" y2="212"/>
+    <text x="694" y="204">N : 1</text>
+    <line x1="635" y1="94" x2="635" y2="180"/>
+    <text x="642" y="140">1 : N</text>
+    <line x1="365" y1="94" x2="560" y2="180"/>
+    <text x="430" y="130">1 : N</text>
+    <line x1="140" y1="244" x2="270" y2="320"/>
+    <text x="150" y="290">1 : N</text>
+  </g>
+</svg>
+<p class="caption">Figura 1. Entidades de negocio. En terracota, los hechos: la compra al proveedor y la venta. El mantenimiento también referencia cliente y vendedor, ambos opcionales.</p>
+</div>
+<p>Cardinalidades que el esquema obliga:</p>
+<ul>
+  <li>Una sede tiene muchos vendedores y muchos vehículos. Un vendedor pertenece a una sede.</li>
+  <li>Un proveedor puede haber vendido varios carros al concesionario. Un carro puede tener varias compras registradas; en los datos de prueba hay una por vehículo.</li>
+  <li>Un cliente puede tener varias ventas. Un vehículo tiene como máximo una venta (<code>UNIQUE</code> sobre <code>VENTA.CarroID</code>).</li>
+  <li>Un vehículo puede tener varios mantenimientos. Cliente y asesor del servicio pueden ir vacíos.</li>
+</ul>
+<p>Además de las entidades de negocio están <code>USUARIO</code> (login de la aplicación, sin relación con <code>VENDEDOR</code>) y <code>AUDITORIA</code> (la llena el trigger, no el formulario).</p>
+
+<h2>5. Modelo relacional</h2>
+<pre>SEDE(SedeID PK, Nombre_Sede, Direccion, Ciudad, Telefono)
+
+CLIENTE(ClientID PK, Nombre, Apellido, DNI UK, Direccion, Telefono)
+
+PROVEEDOR(ProveedorID PK, Nombre_Proveedor, Contacto, Telefono, Direccion)
+
+VENDEDOR(VendedorID PK, Nombre, Apellido, DNI UK, Telefono, SedeID FK → SEDE)
+
+CARROS(CarroID PK, VIN UK, Marca, Modelo, Anio, SedeID FK → SEDE,
+       Precio_Venta, Estado_Inventario)
+
+CARRO_PROVEEDOR(CarroProveedorID PK, CarroID FK → CARROS,
+                ProveedorID FK → PROVEEDOR, Fecha_Compra_Prov, Costo_Compra_Prov)
+
+VENTA(VentaID PK, ClientID FK → CLIENTE, VendedorID FK → VENDEDOR,
+      CarroID FK UK → CARROS, Fecha_Venta, Monto_Total, Forma_Pago)
+
+MANTENIMIENTO(MantenimientoID PK, CarroID FK → CARROS, ClientID FK → CLIENTE,
+              VendedorID FK → VENDEDOR, Fecha_Servicio,
+              Descripcion_Servicio, Costo_Servicio)
+
+USUARIO(UsuarioID PK, Username UK, Password_Hash, Rol, Nombre_Completo, Activo)
+
+AUDITORIA(AuditoriaID PK, Tabla, Operacion, Registro_ID, Usuario_DB, Detalle, Fecha_Hora)</pre>
+<p>Se conservaron los nombres del dump, incluido <code>ClientID</code> y la tabla <code>CARROS</code>. Renombrarlos a mitad del proyecto rompía el respaldo de origen sin mejorar el negocio. Las reglas que no caben en una llave están como <code>CHECK</code>: año entre 1980 y 2100, precios mayores que cero, estado <code>Disponible</code> o <code>Vendido</code>, forma de pago <code>Contado</code>, <code>Financiado</code> o <code>Tarjeta</code>, rol <code>ADMIN</code>, <code>VENDEDOR</code> o <code>CONSULTA</code>.</p>
+
+<h2>6. Normalización</h2>
+<p>Todas las tablas están en primera forma normal: cada celda es un solo valor. El teléfono no es una lista. La descripción del servicio es un texto, no un grupo repetido de repuestos.</p>
+<p>Están en segunda forma normal. Las llaves primarias son un solo atributo (subrogadas), así que no hay dependencia parcial de una parte de la clave. En <code>CARRO_PROVEEDOR</code> la fecha y el costo dependen de esa compra, no del proveedor solo ni del carro solo.</p>
+<p>Están en tercera forma normal y en BCNF. Los determinantes son llaves candidatas:</p>
+<ul>
+  <li><code>CLIENTE</code>: <code>ClientID</code> y <code>DNI</code> determinan nombre, apellido, dirección y teléfono. <code>DNI</code> es llave candidata (<code>UNIQUE</code>), así que no hay dependencia transitiva hacia un atributo que no sea clave.</li>
+  <li><code>CARROS</code>: igual con <code>CarroID</code> y <code>VIN</code>.</li>
+  <li><code>VENTA</code>: <code>VentaID</code> determina el resto. <code>CarroID</code> también, porque un carro se vende una sola vez: es otra llave candidata. El nombre del cliente no está copiado en la venta; si lo estuviera, <code>ClientID → Nombre</code> dentro de <code>VENTA</code> violaría 3FN.</li>
+  <li><code>VENDEDOR</code> guarda <code>SedeID</code>, no el teléfono de la sede. El teléfono depende de la sede y vive en <code>SEDE</code>.</li>
+</ul>
+<p><code>VENTA.Monto_Total</code> no es un dato calculable que haya que borrar para “normalizar”. Es el precio acordado ese día. <code>CARROS.Precio_Venta</code> puede cambiar mañana y la venta ya hecha no debe moverse. Depende de la venta, no del vehículo. Por eso el procedimiento copia el precio de lista al insertar y, de ahí en adelante, son dos hechos distintos.</p>
+<p><code>Estado_Inventario</code> sí se puede derivar de “existe una fila en <code>VENTA</code>”. Se guarda igual porque el inventario se consulta todo el tiempo y el trigger lo mantiene alineado con esa fila. Es una redundancia controlada, no un descuido: si se borra la venta, <code>trg_venta_after_delete</code> devuelve el carro a <code>Disponible</code>.</p>
+
+<h2>7. Diccionario de datos</h2>
+<p>Tipos y nulos tal como quedan en <code>01_ddl.sql</code>. PK: primaria. FK: foránea. UK: única. AI: autonumérica.</p>
+
+<h3>SEDE</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Clave</th><th>Descripción</th></tr>
+  <tr><td>SedeID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador de la sede</td></tr>
+  <tr><td>Nombre_Sede</td><td>VARCHAR(100)</td><td>No</td><td></td><td>Nombre comercial</td></tr>
+  <tr><td>Direccion</td><td>VARCHAR(150)</td><td>No</td><td></td><td>Dirección física</td></tr>
+  <tr><td>Ciudad</td><td>VARCHAR(100)</td><td>No</td><td></td><td>Ciudad</td></tr>
+  <tr><td>Telefono</td><td>VARCHAR(20)</td><td>No</td><td></td><td>Teléfono de la sede</td></tr>
+</table>
+
+<h3>CLIENTE</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Clave</th><th>Descripción</th></tr>
+  <tr><td>ClientID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador. El nombre viene del dump</td></tr>
+  <tr><td>Nombre</td><td>VARCHAR(50)</td><td>No</td><td></td><td>Nombres</td></tr>
+  <tr><td>Apellido</td><td>VARCHAR(50)</td><td>No</td><td></td><td>Apellidos. Hay índice secundario para la búsqueda</td></tr>
+  <tr><td>DNI</td><td>VARCHAR(20)</td><td>No</td><td>UK</td><td>Documento. No se repite</td></tr>
+  <tr><td>Direccion</td><td>VARCHAR(150)</td><td>Sí</td><td></td><td>Dirección de contacto</td></tr>
+  <tr><td>Telefono</td><td>VARCHAR(20)</td><td>Sí</td><td></td><td>Teléfono de contacto</td></tr>
+</table>
+
+<h3>PROVEEDOR</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Clave</th><th>Descripción</th></tr>
+  <tr><td>ProveedorID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador</td></tr>
+  <tr><td>Nombre_Proveedor</td><td>VARCHAR(100)</td><td>No</td><td></td><td>Razón social</td></tr>
+  <tr><td>Contacto</td><td>VARCHAR(100)</td><td>Sí</td><td></td><td>Persona de contacto</td></tr>
+  <tr><td>Telefono</td><td>VARCHAR(20)</td><td>Sí</td><td></td><td>Teléfono</td></tr>
+  <tr><td>Direccion</td><td>VARCHAR(150)</td><td>Sí</td><td></td><td>Dirección</td></tr>
+</table>
+
+<h3>VENDEDOR</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Clave</th><th>Descripción</th></tr>
+  <tr><td>VendedorID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador</td></tr>
+  <tr><td>Nombre</td><td>VARCHAR(50)</td><td>No</td><td></td><td>Nombres</td></tr>
+  <tr><td>Apellido</td><td>VARCHAR(50)</td><td>No</td><td></td><td>Apellidos</td></tr>
+  <tr><td>DNI</td><td>VARCHAR(20)</td><td>No</td><td>UK</td><td>Documento</td></tr>
+  <tr><td>Telefono</td><td>VARCHAR(20)</td><td>Sí</td><td></td><td>Celular del asesor</td></tr>
+  <tr><td>SedeID</td><td>INT</td><td>No</td><td>FK</td><td>Sede donde trabaja</td></tr>
+</table>
+
+<h3>CARROS</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Clave</th><th>Descripción</th></tr>
+  <tr><td>CarroID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador interno</td></tr>
+  <tr><td>VIN</td><td>VARCHAR(50)</td><td>No</td><td>UK</td><td>Número de chasis. Identifica el vehículo en el mundo real</td></tr>
+  <tr><td>Marca</td><td>VARCHAR(50)</td><td>No</td><td></td><td>Marca</td></tr>
+  <tr><td>Modelo</td><td>VARCHAR(50)</td><td>No</td><td></td><td>Línea</td></tr>
+  <tr><td>Anio</td><td>INT</td><td>No</td><td></td><td>Año modelo, entre 1980 y 2100</td></tr>
+  <tr><td>SedeID</td><td>INT</td><td>No</td><td>FK</td><td>Sede donde está o donde se vendió</td></tr>
+  <tr><td>Precio_Venta</td><td>DECIMAL(12,2)</td><td>No</td><td></td><td>Precio de lista vigente. Mayor que cero</td></tr>
+  <tr><td>Estado_Inventario</td><td>VARCHAR(20)</td><td>No</td><td></td><td>Disponible o Vendido. Lo cambia el trigger</td></tr>
+</table>
+
+<h3>CARRO_PROVEEDOR</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Clave</th><th>Descripción</th></tr>
+  <tr><td>CarroProveedorID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador de la compra</td></tr>
+  <tr><td>CarroID</td><td>INT</td><td>No</td><td>FK</td><td>Vehículo comprado</td></tr>
+  <tr><td>ProveedorID</td><td>INT</td><td>No</td><td>FK</td><td>Proveedor</td></tr>
+  <tr><td>Fecha_Compra_Prov</td><td>DATE</td><td>No</td><td></td><td>Fecha de compra al proveedor</td></tr>
+  <tr><td>Costo_Compra_Prov</td><td>DECIMAL(12,2)</td><td>No</td><td></td><td>Costo. No es el precio de venta al público</td></tr>
+</table>
+
+<h3>VENTA</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Clave</th><th>Descripción</th></tr>
+  <tr><td>VentaID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador</td></tr>
+  <tr><td>ClientID</td><td>INT</td><td>No</td><td>FK</td><td>Comprador</td></tr>
+  <tr><td>VendedorID</td><td>INT</td><td>No</td><td>FK</td><td>Asesor que cierra</td></tr>
+  <tr><td>CarroID</td><td>INT</td><td>No</td><td>FK, UK</td><td>Vehículo. Solo puede aparecer en una venta</td></tr>
+  <tr><td>Fecha_Venta</td><td>DATE</td><td>No</td><td></td><td>Fecha. Índice <code>idx_venta_fecha</code></td></tr>
+  <tr><td>Monto_Total</td><td>DECIMAL(12,2)</td><td>No</td><td></td><td>Valor cobrado ese día</td></tr>
+  <tr><td>Forma_Pago</td><td>VARCHAR(50)</td><td>No</td><td></td><td>Contado, Financiado o Tarjeta</td></tr>
+</table>
+
+<h3>MANTENIMIENTO</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Clave</th><th>Descripción</th></tr>
+  <tr><td>MantenimientoID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador del servicio</td></tr>
+  <tr><td>CarroID</td><td>INT</td><td>No</td><td>FK</td><td>Vehículo atendido</td></tr>
+  <tr><td>ClientID</td><td>INT</td><td>Sí</td><td>FK</td><td>Cliente, si el servicio es posventa</td></tr>
+  <tr><td>VendedorID</td><td>INT</td><td>Sí</td><td>FK</td><td>Asesor que recibe el vehículo</td></tr>
+  <tr><td>Fecha_Servicio</td><td>DATE</td><td>No</td><td></td><td>Fecha. Índice <code>idx_manto_fecha</code></td></tr>
+  <tr><td>Descripcion_Servicio</td><td>TEXT</td><td>No</td><td></td><td>Trabajo realizado</td></tr>
+  <tr><td>Costo_Servicio</td><td>DECIMAL(10,2)</td><td>No</td><td></td><td>Valor del servicio</td></tr>
+</table>
+
+<h3>USUARIO y AUDITORIA</h3>
+<table>
+  <tr><th>Campo</th><th>Tipo</th><th>Nulo</th><th>Clave</th><th>Descripción</th></tr>
+  <tr><td>UsuarioID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador del login web</td></tr>
+  <tr><td>Username</td><td>VARCHAR(40)</td><td>No</td><td>UK</td><td>Usuario del formulario</td></tr>
+  <tr><td>Password_Hash</td><td>VARCHAR(200)</td><td>No</td><td></td><td>PBKDF2-SHA256, 260000 vueltas. No es la clave</td></tr>
+  <tr><td>Rol</td><td>VARCHAR(20)</td><td>No</td><td></td><td>ADMIN, VENDEDOR o CONSULTA</td></tr>
+  <tr><td>Nombre_Completo</td><td>VARCHAR(100)</td><td>No</td><td></td><td>Nombre que se muestra en la barra</td></tr>
+  <tr><td>Activo</td><td>TINYINT(1)</td><td>No</td><td></td><td>1 permite entrar. 0 no</td></tr>
+  <tr><td>AuditoriaID</td><td>INT</td><td>No</td><td>PK, AI</td><td>Identificador del evento</td></tr>
+  <tr><td>Tabla</td><td>VARCHAR(40)</td><td>No</td><td></td><td>Tabla afectada. Hoy, VENTA</td></tr>
+  <tr><td>Operacion</td><td>VARCHAR(20)</td><td>No</td><td></td><td>INSERT o DELETE</td></tr>
+  <tr><td>Registro_ID</td><td>INT</td><td>Sí</td><td></td><td>VentaID involucrado</td></tr>
+  <tr><td>Usuario_DB</td><td>VARCHAR(128)</td><td>No</td><td></td><td><code>USER()</code> de MySQL en ese momento</td></tr>
+  <tr><td>Detalle</td><td>VARCHAR(255)</td><td>No</td><td></td><td>Carro, monto y forma de pago, o la anulación</td></tr>
+  <tr><td>Fecha_Hora</td><td>DATETIME</td><td>No</td><td></td><td>Momento del evento. Zona horaria del servidor, -05:00</td></tr>
+</table>
+
+<h2>8. Objetos de la base</h2>
+<h3>Vistas</h3>
+<p>Las tres se crean con <code>SQL SECURITY INVOKER</code>. Quien consulta usa sus propios permisos: si no puede leer <code>VENTA</code>, la vista tampoco le responde. <code>DEFINER</code> habría ejecutado la vista como <code>root</code> y un usuario limitado vería filas que sus <code>GRANT</code> no permiten.</p>
+<ul>
+  <li><code>vw_detalle_ventas</code>: venta con nombre de cliente, vendedor, vehículo, sede, monto y forma de pago. Es la lista de ventas de la aplicación.</li>
+  <li><code>vw_inventario_disponible</code>: vehículos en estado Disponible, con su sede.</li>
+  <li><code>vw_ventas_por_sede</code>: cantidad y suma de ventas por sede. El resumen del reporte usa esta vista. El total es histórico, no depende del filtro de fechas.</li>
+</ul>
+<h3>Procedimientos</h3>
+<p><code>sp_registrar_venta(cliente, vendedor, carro, forma_pago)</code> rechaza una forma de pago desconocida, lee el precio y el estado del vehículo, y hace el <code>INSERT</code>. No pide el monto: lo copia de <code>Precio_Venta</code>. También es <code>INVOKER</code>, así que el vendedor necesita <code>INSERT</code> sobre <code>VENTA</code> y <code>SELECT</code> sobre <code>CARROS</code>. No se usó <code>SELECT … FOR UPDATE</code>: con <code>INVOKER</code> ese bloqueo exige privilegio <code>UPDATE</code> sobre <code>CARROS</code>, y el vendedor no lo tiene a propósito. La doble venta la cierran el <code>UNIQUE</code> de <code>CarroID</code> y el trigger <code>BEFORE</code>.</p>
+<p><code>sp_reporte_ventas(desde, hasta)</code> devuelve el detalle del periodo. La pantalla de reporte lo llama. El usuario de consulta tiene <code>EXECUTE</code> sobre este procedimiento y no sobre <code>sp_registrar_venta</code>.</p>
+<p><code>sp_anular_venta(venta_id)</code> es el tercer procedimiento. Abre una transacción con <code>START TRANSACTION</code>, borra la venta y hace <code>COMMIT</code>. Si la venta no existe, o el trigger falla, el manejador ejecuta <code>ROLLBACK</code>. Dentro de un procedimiento la palabra <code>BEGIN</code> abre el bloque de código, no la transacción; por eso la transacción se escribe <code>START TRANSACTION</code>. Fuera del procedimiento, en <code>database/demo_transaccion.sql</code>, se usa <code>BEGIN</code> como alias y un <code>ROLLBACK</code> que deja la base igual. La pantalla de anular venta llama a este procedimiento, no a un <code>DELETE</code> suelto. Solo el administrador puede ejecutarlo: a <code>vendedor_concesionario</code> se le concedió y luego se le revocó con <code>REVOKE</code>.</p>
+<h3>Triggers</h3>
+<p>Protegen la tabla, no un botón. Un <code>INSERT</code> desde la consola pasa por el mismo camino que la aplicación.</p>
+<ul>
+  <li><code>trg_venta_before_insert</code>: si el carro no existe o no está Disponible, hace <code>SIGNAL</code> y la fila no entra. También exige monto mayor que cero.</li>
+  <li><code>trg_venta_after_insert</code>: pone el carro en Vendido e inserta en <code>AUDITORIA</code> con <code>USER()</code>.</li>
+  <li><code>trg_venta_after_delete</code>: devuelve el carro a Disponible y audita la anulación. No lee <code>VENTA</code> dentro del trigger: MySQL no deja consultar la misma tabla que disparó el evento. No hace falta, porque <code>uk_venta_carro</code> garantiza una sola venta por vehículo.</li>
+</ul>
+<p>El trigger queda creado por <code>root</code>. Por eso puede hacer <code>UPDATE</code> de <code>CARROS</code> aunque la sesión sea la del vendedor. Las dos ventas del script de carga no aparecen en auditoría: <code>02_dml.sql</code> corre antes de <code>05_triggers.sql</code>.</p>
+
+<h2>9. Plan de seguridad</h2>
+<p>Hay dos puertas y no comparten clave.</p>
+<p>La puerta web está en la tabla <code>USUARIO</code>. La clave se guarda como PBKDF2-SHA256 con 260000 iteraciones y sal. El formulario compara con <code>hmac.compare_digest</code>. Si el usuario no existe, igual se calcula un hash, para no responder más rápido en ese caso. La sesión va en una cookie firmada, <code>HttpOnly</code> y <code>SameSite=Lax</code>. Cada <code>POST</code> lleva un token CSRF. Las consultas usan parámetros <code>%s</code>; el texto del buscador no se concatena al SQL. Los comodines <code>%</code> y <code>_</code> del usuario se escapan antes del <code>LIKE</code>.</p>
+<p>Al entrar, Flask no sigue conectado como <code>root</code>. Según el rol abre una de estas cuentas, definidas en <code>06_usuarios.sql</code> para el host <code>%</code> (conexión TCP):</p>
+<table>
+  <tr><th>Cuenta MySQL</th><th>Uso</th><th>Puede</th><th>No puede</th></tr>
+  <tr><td>auth_concesionario</td><td>Solo el login</td><td><code>SELECT</code> sobre <code>USUARIO</code></td><td>Ver ventas, inventario o hashes de otras tablas</td></tr>
+  <tr><td>consulta_concesionario</td><td>Rol Consulta</td><td><code>SELECT</code> de negocio y <code>EXECUTE</code> de <code>sp_reporte_ventas</code></td><td><code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, vender, leer <code>USUARIO</code> o <code>AUDITORIA</code></td></tr>
+  <tr><td>vendedor_concesionario</td><td>Rol Vendedor</td><td>Leer el negocio; insertar y actualizar clientes; insertar ventas y mantenimientos; ejecutar ambos procedimientos</td><td>Borrar, cambiar una venta ya hecha, actualizar el precio del carro, leer auditoría</td></tr>
+  <tr><td>admin_concesionario</td><td>Rol Administrador</td><td><code>ALL</code> dentro de <code>concesionario_db</code></td><td>No es superusuario del servidor: no administra otras bases ni crea cuentas globales</td></tr>
+  <tr><td>root</td><td>Carga inicial y backup</td><td>El servidor</td><td>No lo usa la aplicación</td></tr>
+</table>
+<p>En la sustentación, <code>consulta_concesionario</code> ejecuta un <code>INSERT</code> y MySQL responde 1142. Ese es el control del SGBD. El formulario esconde el botón, y además la cuenta no tiene el privilegio: las dos capas tienen que fallar. Ningún <code>GRANT</code> lleva <code>WITH GRANT OPTION</code>.</p>
+<p>Límite que hay que saber decir: el proceso de Flask conoce las cuatro claves, porque están en variables de entorno para poder abrir la conexión del rol. Si alguien toma el servidor de la aplicación, tiene esas claves. Lo que esta división sí impide es que un error del programa ejecute un <code>DELETE</code> con la sesión del vendedor: MySQL lo niega igual. En producción se quitan los usuarios de prueba de la pantalla de login, se rotan las claves y MySQL no se publica a internet; solo la red interna de Docker debería ver el puerto 3306.</p>
+
+<h2>10. Plan de respaldo</h2>
+<p>El respaldo de la entrega es lógico, con <code>mysqldump --single-transaction --routines --triggers --events --set-gtid-purged=OFF --databases concesionario_db</code>. <code>--single-transaction</code> saca una foto consistente de InnoDB sin bloquear las lecturas. El archivo queda en <code>database/concesionario_backup.sql</code> y se regenera con <code>./database/generar_backup.sh</code>.</p>
+<table>
+  <tr><th></th><th>Decisión para este proyecto</th></tr>
+  <tr><td>Qué se respalda</td><td>Esquema, datos, vistas, procedimientos y triggers de <code>concesionario_db</code></td></tr>
+  <tr><td>Qué no va en ese archivo</td><td>Las cuentas de MySQL. Viven en el diccionario del servidor y se recrean con <code>06_usuarios.sql</code></td></tr>
+  <tr><td>Frecuencia recomendada</td><td>Un dump diario en un horario de poca venta. Retención: 7 diarios y 4 semanales</td></tr>
+  <tr><td>RPO</td><td>24 horas con solo el dump. Para perder menos haría falta binlog y recuperación a un punto en el tiempo; no está montado en la demo</td></tr>
+  <tr><td>RTO</td><td>Menos de 15 minutos. La base de prueba es pequeña y restaurar es volver a ejecutar el archivo</td></tr>
+  <tr><td>Dónde guardarlo</td><td>Otra máquina o un disco distinto al del servidor. Un dump al lado del dato único no es respaldo</td></tr>
+  <tr><td>Prueba</td><td><code>./database/demo_backup.sh --confirmar</code> borra <code>VENTA</code> y restaura el archivo. El conteo vuelve al de la carga inicial</td></tr>
+</table>
+<p>Responsable de tomar y probar el respaldo: el rol administrador del equipo, no el vendedor. Una vez al mes hay que restaurar en un servidor vacío, no solo mirar que el archivo pese más de cero. Servidor nuevo: restaurar el dump y después correr <code>06_usuarios.sql</code>. Mismo servidor, datos borrados por error: basta el dump, las cuentas siguen.</p>
+
+<h2>11. Análisis de índices</h2>
+<p>InnoDB ya indexa la llave primaria, cada <code>UNIQUE</code> y la columna de cada llave foránea. Crear otro índice igual no acelera la lectura y sí frena cada <code>INSERT</code> y cada <code>UPDATE</code>, porque hay que mantener dos estructuras. Por eso no existen <code>idx_cliente_dni</code>, <code>idx_carro_vin</code> ni un índice extra sobre <code>VENTA.CarroID</code>: ya son únicos. Tampoco se indexó <code>AUDITORIA.Fecha_Hora</code>. El autonumérico crece con el tiempo y “los últimos eventos” se resuelve con <code>ORDER BY AuditoriaID DESC</code>.</p>
+<p>Los cuatro índices de <code>07_indices.sql</code> responden a una consulta que de verdad se ejecuta:</p>
+<table>
+  <tr><th>Índice</th><th>Columnas</th><th>Consulta que lo justifica</th></tr>
+  <tr><td>idx_venta_fecha</td><td>VENTA(Fecha_Venta)</td><td><code>sp_reporte_ventas</code>, filtro <code>BETWEEN</code> de fechas</td></tr>
+  <tr><td>idx_carro_estado_marca</td><td>CARROS(Estado_Inventario, Marca)</td><td>Pantalla de inventario. El estado va primero porque se filtra solo, sin marca. El prefijo izquierdo tiene que ser esa columna; al revés, <code>WHERE Estado = 'Disponible'</code> no usaría el índice</td></tr>
+  <tr><td>idx_cliente_apellido</td><td>CLIENTE(Apellido)</td><td>Búsqueda por prefijo, <code>Apellido LIKE 'Gom%'</code>. Un <code>LIKE '%omez'</code> no lo usa, y el formulario no arma el patrón así</td></tr>
+  <tr><td>idx_manto_fecha</td><td>MANTENIMIENTO(Fecha_Servicio)</td><td>Historial de taller por fecha</td></tr>
+</table>
+<p>Un índice no se “usa” por existir: el optimizador compara costos. Con pocas filas a veces le sale más barato leer la tabla entera. Por eso la sustentación no se queda en las dos ventas de mayo. <code>demo_explain.sql</code> hace las dos mediciones y borra la tabla de laboratorio al final. La consulta de laboratorio tiene la misma forma que un filtro del reporte: igualdad sobre la fecha.</p>
+<p>Lectura del plan, que es lo que hay que señalar en pantalla:</p>
+<ul>
+  <li>Antes: <code>type = ALL</code>, <code>key = NULL</code>, <code>rows</code> cerca del total de la tabla. MySQL va a mirar todas las filas.</li>
+  <li>Después: <code>type = ref</code>, <code>key = idx_demo_fecha</code>, <code>rows</code> mucho menor. Entra por el índice y solo revisa las filas de esa fecha.</li>
+</ul>
+<p>El resultado concreto de la ejecución queda en la sección 14, copiado de la corrida de <code>./database/demo_explain.sh</code>.</p>
+
+<h2>12. Arquitectura de la aplicación</h2>
+<div class="fig">
+<svg viewBox="0 0 900 150" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="150" fill="#f7f3ec"/>
+  <g font-family="Palatino, Georgia, serif" font-size="15" text-anchor="middle">
+    <rect x="20" y="40" width="170" height="70" rx="8" fill="#fffdf8" stroke="#1a2e26"/>
+    <text x="105" y="80">Navegador</text>
+    <rect x="250" y="40" width="190" height="70" rx="8" fill="#fffdf8" stroke="#1a2e26"/>
+    <text x="345" y="72">Flask / Gunicorn</text>
+    <text x="345" y="92" font-size="12" fill="#5e564c">sesión y rol</text>
+    <rect x="500" y="40" width="170" height="70" rx="8" fill="#fffdf8" stroke="#1a2e26"/>
+    <text x="585" y="72">Cuenta MySQL</text>
+    <text x="585" y="92" font-size="12" fill="#5e564c">del rol</text>
+    <rect x="720" y="40" width="160" height="70" rx="8" fill="#1a2e26"/>
+    <text x="800" y="80" fill="#f6f1e8">InnoDB</text>
+    <g stroke="#b5522a" stroke-width="1.6">
+      <line x1="190" y1="75" x2="250" y2="75"/>
+      <line x1="440" y1="75" x2="500" y2="75"/>
+      <line x1="670" y1="75" x2="720" y2="75"/>
+    </g>
+  </g>
+</svg>
+<p class="caption">Figura 2. Cada petición autenticada usa la cuenta MySQL del rol, no una cuenta única de la aplicación.</p>
+</div>
+<p>El código está en <code>app/app.py</code>. No hay ORM: el SQL que se sustenta es el que está escrito en las rutas. Gunicorn levanta dos procesos. La sesión firma la cookie con <code>SECRET_KEY</code>; el rol no viaja en un campo que el navegador pueda editar sin invalidar la firma.</p>
+<p>Matriz que aplica el programa, y que las cuentas de la sección 9 vuelven a exigir:</p>
+<table>
+  <tr><th>Módulo</th><th>Administrador</th><th>Vendedor</th><th>Consulta</th></tr>
+  <tr><td>Clientes</td><td>CRUD</td><td>Crear y editar</td><td>Ver</td></tr>
+  <tr><td>Vehículos, sedes, vendedores, proveedores</td><td>CRUD</td><td>Ver</td><td>Ver</td></tr>
+  <tr><td>Ventas</td><td>Crear y anular</td><td>Crear</td><td>Ver</td></tr>
+  <tr><td>Mantenimientos</td><td>CRUD</td><td>Crear</td><td>Ver</td></tr>
+  <tr><td>Reporte</td><td>Ver</td><td>Ver</td><td>Ver</td></tr>
+  <tr><td>Auditoría</td><td>Ver</td><td>No</td><td>No</td></tr>
+</table>
+<p>Registrar una venta no hace <code>INSERT</code> desde Python. La ruta llama <code>CALL sp_registrar_venta(...)</code>. El procedimiento escribe <code>VENTA</code>, el trigger <code>BEFORE</code> valida, el trigger <code>AFTER</code> cambia <code>CARROS.Estado_Inventario</code> y deja el rastro. Anular la venta, solo el administrador, dispara <code>trg_venta_after_delete</code>. El estado del vehículo no tiene campo en el formulario: si se pudiera digitar “Vendido”, el trigger y la pantalla se contradirían.</p>
+<p>El archivo de ejemplo <code>app/config.example.env</code> no trae claves. <code>docker-compose.yml</code> sí trae las de la práctica, porque el enunciado pide un comando único y los usuarios de prueba publicados en el README.</p>
+
+<h2>13. Manual de instalación</h2>
+<h3>Con Docker, que es la vía de la entrega</h3>
+<ol>
+  <li>Instalar Docker Desktop y abrirlo.</li>
+  <li>En la raíz del repositorio: <code>docker compose up --build</code>.</li>
+  <li>Abrir http://localhost:8080. MySQL queda en <code>127.0.0.1:3307</code> (usuario <code>root</code>, clave <code>root</code>). Esos puertos evitan el MySQL que ya escucha en 3306 y AirPlay en el 5000.</li>
+  <li>La primera vez se ejecutan, en orden, <code>01_ddl.sql</code> … <code>07_indices.sql</code>.</li>
+  <li>Generar el backup de la sustentación: <code>./database/generar_backup.sh</code>.</li>
+</ol>
+<p>Para volver a la carga inicial, incluyendo el borrado de ventas hechas en el ensayo: <code>docker compose down -v</code> y otra vez <code>docker compose up --build</code>. Sin <code>-v</code> el volumen sigue y los scripts no se repiten.</p>
+<h3>Sin Docker</h3>
+<p>Hace falta MySQL 8 o superior y Python 3.11+. Si el binlog está activo, el servidor debe tener <code>log_bin_trust_function_creators = 1</code> antes de crear triggers, o hay que crearlos con una cuenta que tenga el privilegio. Luego:</p>
+<pre>mysql -h 127.0.0.1 -uroot -p &lt; database/01_ddl.sql
+mysql -h 127.0.0.1 -uroot -p &lt; database/02_dml.sql
+mysql -h 127.0.0.1 -uroot -p &lt; database/03_vistas.sql
+mysql -h 127.0.0.1 -uroot -p &lt; database/04_procedimientos.sql
+mysql -h 127.0.0.1 -uroot -p &lt; database/05_triggers.sql
+mysql -h 127.0.0.1 -uroot -p &lt; database/06_usuarios.sql
+mysql -h 127.0.0.1 -uroot -p &lt; database/07_indices.sql</pre>
+<p>En <code>app/</code>: crear un entorno, <code>pip install -r requirements.txt</code>, copiar <code>config.example.env</code> a <code>.env</code>, completar las claves y ejecutar <code>flask --app app run --port 8080</code>.</p>
+<h3>Comprobación rápida</h3>
+<ul>
+  <li>Login <code>admin</code> / <code>admin123</code>, <code>vendedor</code> / <code>vendedor123</code>, <code>consulta</code> / <code>consulta123</code>.</li>
+  <li>El reporte, con fechas del 1 de enero al 31 de diciembre de 2026, muestra las ventas de mayo.</li>
+  <li><code>./database/demo_permisos.sh</code> termina con el <code>INSERT</code> rechazado.</li>
+  <li><code>./database/demo_procedimiento.sh</code> deja una fila en <code>AUDITORIA</code> y el segundo insert lo rechaza el trigger.</li>
+</ul>
+
+<h2>14. Resultado de EXPLAIN</h2>
+<p>Salida real de <code>./database/demo_explain.sh</code> el 10 de noviembre de 2026, sobre el MySQL 8.4 del Compose.</p>
+<p>Consulta del reporte sobre <code>VENTA</code>, con <code>idx_venta_fecha</code> ya creado. El plan entra al índice (<code>type = range</code>, <code>key = idx_venta_fecha</code>). <code>rows = 4</code> porque en ese momento las ventas caían todas dentro de 2026: el rango cubre la tabla, pero no la recorre como <code>ALL</code>.</p>
+<pre>type: range
+possible_keys: idx_venta_fecha
+key: idx_venta_fecha
+rows: 4
+Extra: Using index condition</pre>
+<p>Tabla <code>DEMO_BUSQUEDA</code>, 5000 filas, antes de crear el índice. Recorrido completo:</p>
+<pre>type: ALL
+possible_keys: NULL
+key: NULL
+rows: 5000
+filtered: 10.00
+Extra: Using where</pre>
+<p>La misma consulta después de <code>CREATE INDEX idx_demo_fecha (fecha)</code> y <code>ANALYZE TABLE</code>. Baja de 5000 filas estimadas a 6:</p>
+<pre>type: ref
+possible_keys: idx_demo_fecha
+key: idx_demo_fecha
+key_len: 3
+ref: const
+rows: 6
+filtered: 100.00</pre>
+<p>Esa es la frase de la sustentación: sin índice el motor mira las 5000 filas; con índice entra por <code>idx_demo_fecha</code> y estima 6, que son las repeticiones de esa fecha. La tabla de laboratorio se elimina al terminar el script y no queda en el backup.</p>
+
+</body>
+</html>

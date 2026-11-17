@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block titulo %}Vehículos · Concesionario{% endblock %}
+{% block contenido %}
+<header class="page-head">
+  <div>
+    <h1>Vehículos</h1>
+    <p>Cada carro tiene un chasis único. Cuando se vende, queda marcado como Vendido.</p>
+  </div>
+  {% if puede('carros', 'crear') %}
+  <a class="btn" href="{{ url_for('carro_nuevo') }}">Agregar</a>
+  {% endif %}
+</header>
+<form class="filters" method="get">
+  <select name="estado">
+    <option value="">Todos los estados</option>
+    <option value="Disponible" {% if estado == 'Disponible' %}selected{% endif %}>Disponible</option>
+    <option value="Vendido" {% if estado == 'Vendido' %}selected{% endif %}>Vendido</option>
+  </select>
+  <select name="marca">
+    <option value="">Todas las marcas</option>
+    {% for item in marcas %}
+    <option value="{{ item.Marca }}" {% if marca == item.Marca %}selected{% endif %}>{{ item.Marca }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn" type="submit">Filtrar</button>
+</form>
+<section class="panel">
+  {% if filas %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Chasis</th><th>Marca</th><th>Modelo</th><th>Año</th><th>Sede</th><th>Precio</th><th>Estado</th>
+          {% if puede('carros', 'editar') or puede('carros', 'eliminar') %}<th></th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for fila in filas %}
+        <tr>
+          <td>{{ fila.VIN }}</td>
+          <td>{{ fila.Marca }}</td>
+          <td>{{ fila.Modelo }}</td>
+          <td>{{ fila.Anio }}</td>
+          <td>{{ fila.Nombre_Sede }}</td>
+          <td>{{ fila.Precio_Venta|cop }}</td>
+          <td><span class="estado estado-{{ fila.Estado_Inventario|lower }}">{{ fila.Estado_Inventario }}</span></td>
+          {% if puede('carros', 'editar') or puede('carros', 'eliminar') %}
+          <td class="acciones">
+            {% if puede('carros', 'editar') %}
+            <a href="{{ url_for('carro_editar', registro_id=fila.CarroID) }}">Editar</a>
+            {% endif %}
+            {% if puede('carros', 'eliminar') %}
+            <form method="post" action="{{ url_for('carro_eliminar', registro_id=fila.CarroID) }}" onsubmit="return confirm('¿Eliminar este vehículo?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf }}">
+              <button type="submit" class="link-danger">Eliminar</button>
+            </form>
+            {% endif %}
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">No hay vehículos con ese filtro.</p>
+  {% endif %}
+</section>
+{% endblock %}
