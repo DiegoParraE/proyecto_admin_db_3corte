@@ -1,114 +1,132 @@
-# Concesionario — Cali, Medellín y Bogotá
+# Concesionario
 
-Sistema para las sedes de Cali, Medellín y Bogotá: inventario de vehículos, clientes, vendedores, proveedores, ventas y mantenimientos. La base salió del dump `concesionario_db` y este repositorio la deja lista para la sustentación de Administración de Bases de Datos.
+Sistema para el inventario, las ventas y el taller de un concesionario con sedes en Bogotá, Medellín y Cali. La página está hecha en Flask y habla directo con MySQL. No hay una API en el medio.
 
-## Tecnologías
+Es el trabajo de Administración de Bases de Datos, Ingeniería de Sistemas, TEINCO. La base se llama `concesionario_db`.
 
-- MySQL 8.4 (InnoDB): tablas, vistas, procedimientos, triggers, usuarios y índices
-- Python 3, Flask y Gunicorn
-- PyMySQL, consultas con parámetros
-- Docker Compose
+## Requisitos
 
-## Cómo levantarlo
+Hace falta Docker Desktop encendido. Este proyecto no se prende con `npm` ni con `yarn`.
 
-Hace falta Docker Desktop encendido.
+## Cómo ejecutarlo
+
+Desde la raíz del repositorio:
 
 ```bash
 docker compose up --build
 ```
 
-- Aplicación: http://localhost:8080
-- MySQL, desde el equipo: `127.0.0.1:3307`, usuario `root`, clave `root`
+- Página: http://localhost:8080
+- MySQL, desde el equipo: `127.0.0.1`, puerto `3307`, usuario `root`, clave `root`
 
-El puerto 3306 de esta máquina ya lo usa otro MySQL, y el 5000 lo toma AirPlay. Por eso Compose publica 3307 y 8080. Dentro de la red de Docker no cambia nada.
+El puerto 3306 de la máquina ya lo usa otro MySQL y el 5000 lo toma AirPlay. Por eso Compose publica 3307 y 8080. Adentro de Docker, MySQL sigue en 3306 y Flask en 5000. La variable `DB_HOST` vale `db`, que es el nombre del servicio.
 
-La primera vez MySQL ejecuta `base_de_datos/01_ddl.sql` … `07_indices.sql` y carga los datos. Si ya existe el volumen y quieres empezar de cero:
+La primera vez, MySQL corre `base_de_datos/01_ddl.sql` hasta `07_indices.sql` y carga los datos. Un segundo `docker compose up` no vuelve a ejecutar esos scripts.
+
+Para apagarlo, Control + C en esa terminal. Para borrar los datos y volver a cargar los scripts:
 
 ```bash
 docker compose down -v
 docker compose up --build
 ```
 
-`down -v` borra el volumen. Sin `-v`, un segundo `up` no vuelve a correr los scripts.
+`down -v` borra el volumen. Editar `02_dml.sql` y guardar el archivo no cambia la base que ya está corriendo: hay que borrar el volumen y levantarla otra vez. Las claves hasheadas de `USUARIO` no se reescriben; si se cambian, el ingreso deja de funcionar.
 
-## Usuarios de prueba
+Si se cambia una pantalla o `app.py`, la imagen se arma al construir. Hace falta:
 
-Hay dos capas. No uses la clave de MySQL en el formulario, ni la clave del formulario en la consola.
+```bash
+docker compose up --build -d web
+```
 
-### Aplicación web (http://localhost:8080)
+## Usuarios de la página
 
-| Usuario | Clave | Qué puede hacer |
-| --- | --- | --- |
-| `admin` | `admin123` | CRUD completo y auditoría |
-| `vendedor` | `vendedor123` | Crea clientes, ventas y mantenimientos. No elimina |
-| `consulta` | `consulta123` | Solo lectura y reporte |
+En http://localhost:8080 se entra con estas cuentas. No son las cuentas de MySQL.
 
-### Cuentas del SGBD (consola)
+| Usuario | Clave | Nombre en pantalla | Qué puede hacer |
+| --- | --- | --- | --- |
+| `admin` | `admin123` | Diego Parra | Ver, crear, editar y eliminar. Es el único que ve Auditoría |
+| `vendedor` | `vendedor123` | Edison Bohorquez | Crear clientes, ventas y servicios de taller. No elimina |
+| `consulta` | `consulta123` | Fernando Benitez | Solo mira. No le sale el botón de agregar |
 
-Conéctate por TCP (`-h 127.0.0.1`). El host de estas cuentas es `%`; por socket, `localhost` no coincide.
+Esos nombres salen de `USUARIO.Nombre_Completo` en `base_de_datos/02_dml.sql`. Los vendedores de las sedes son otros: Pedro Perez en Bogotá, Maria Lopez en Medellín y Juan Ramirez en Cali.
+
+## Usuarios de MySQL
+
+La página, después del login, abre MySQL con la cuenta del rol. Nunca entra como `root`. Estas cuentas sirven para la consola. Hay que conectar por TCP, porque el host es `%` y el socket `localhost` no coincide:
+
+```bash
+mysql -h 127.0.0.1 -P 3307 -u consulta_concesionario -p
+```
 
 | Cuenta | Clave | Permiso |
 | --- | --- | --- |
-| `consulta_concesionario` | `Consulta#2026` | Solo `SELECT` y el reporte. El `INSERT` falla |
-| `vendedor_concesionario` | `Vendedor#2026` | Lee, crea clientes, ventas y mantenimientos. No borra ni lee la auditoría |
+| `consulta_concesionario` | `Consulta#2026` | Solo lectura y el reporte |
+| `vendedor_concesionario` | `Vendedor#2026` | Lee y crea clientes, ventas y mantenimientos. No borra ventas |
 | `admin_concesionario` | `Admin#2026` | Todo dentro de `concesionario_db` |
-| `auth_concesionario` | `Auth#2026` | Solo lee `USUARIO`, para el login |
-| `root` | `root` | Administración del servidor y el backup |
+| `auth_concesionario` | `Auth#2026` | Solo lee `USUARIO`, para validar el login |
+| `root` | `root` | Init del contenedor y el backup |
 
-`app/backend/config.example.env` es la plantilla sin credenciales. Las claves de esta tabla están en `docker-compose.yml` porque el enunciado pide levantar todo con un comando y publicar los usuarios de prueba. No son claves de producción.
+`app/backend/config.example.env` es la plantilla sin credenciales. Las claves de prueba están en `docker-compose.yml` para poder levantar todo con un comando. No sirven para un entorno real. En YAML la clave va entre comillas, porque `#` empieza un comentario.
 
-## Qué hay en el repositorio
+## Carpetas
 
-- `base_de_datos/`: scripts `01_ddl.sql` a `07_indices.sql`, el backup y las demos
-- `app/frontend/`: pantallas HTML y el CSS
-- `app/backend/`: Flask (`app.py`), dependencias y la configuración de ejemplo
-- `docs/modelo_er.drawio`: modelo entidad-relación para abrir en draw.io
-- `docs/documento_tecnico.pdf`: documento técnico
-
-Después del primer arranque, genera el backup que vas a restaurar en vivo:
-
-```bash
-./base_de_datos/generar_backup.sh
+```text
+app/
+  frontend/          pantallas HTML y style.css
+  backend/           app.py, requirements.txt, config.example.env
+base_de_datos/
+  01_ddl.sql         tablas, llaves, CHECK y DEFAULT
+  02_dml.sql         datos de prueba
+  03_vistas.sql      tres vistas
+  04_procedimientos.sql
+  05_triggers.sql
+  06_usuarios.sql    GRANT y REVOKE
+  07_indices.sql
+  concesionario_backup.sql
+  demo_*.sh          pruebas de permisos, venta, transacción, EXPLAIN y backup
+docs/
+  Manual_de_usuario.pdf
+  Manual_tecnico.pdf
+docker-compose.yml
 ```
 
-## Guion de sustentación (15 + 5)
+## Datos de prueba
 
-Ensayen con el reloj. Todos hablan.
+Hay 3 sedes, 20 clientes, 20 carros, 2 proveedores, 4 compras, 2 ventas de mayo de 2026 y 1 mantenimiento. El chasis está en la columna `VIN` y en la página se muestra como número de chasis. Los de ejemplo empiezan por `CHS`.
 
-1. **Problema y modelo (3 min).** El concesionario llevaba sedes, inventario, compras, ventas y taller en hojas de cálculo. Un carro se podía vender dos veces y el precio de lista se mezclaba con el de la venta. Muestren el E-R del PDF: `SEDE`, `CLIENTE`, `VENDEDOR`, `PROVEEDOR`, `CARROS`, `CARRO_PROVEEDOR`, `VENTA`, `MANTENIMIENTO`. `USUARIO` y `AUDITORIA` son el apoyo de la aplicación y del trigger.
-2. **Aplicación (4 min).** Entren como `admin`. Creen un cliente. Entren como `vendedor` / `vendedor123` y registren una venta del Chevrolet Onix: el monto no se digita y el vehículo pasa a Vendido. Entren como `consulta` / `consulta123` y muestren que no aparece «Nuevo». Abran Reporte con el rango 1 ene 2026 – 31 dic 2026 (las ventas de prueba son de mayo).
-3. **SGBD (4 min).** En otra terminal, desde la raíz del repo:
-   ```bash
-   ./base_de_datos/demo_permisos.sh
-   ./base_de_datos/demo_procedimiento.sh
-   ```
-   Lo primero debe mostrar `INSERT` denegado. Lo segundo vende un carro, escribe `AUDITORIA` y el segundo `INSERT` lo rechaza el trigger.
-4. **Backup (2 min).**
-   ```bash
-   ./base_de_datos/demo_backup.sh --confirmar
-   ```
-   Borra las ventas (el conteo queda en 0) y el backup las devuelve.
-5. **EXPLAIN (2 min).**
-   ```bash
-   ./base_de_datos/demo_explain.sh
-   ```
-   En `VENTA` el plan ya usa `idx_venta_fecha` (`type = range`). El contraste grande está en la tabla de laboratorio de 5000 filas: antes `type = ALL`, `key = NULL`, 5000 filas; después `type = ref`, `key = idx_demo_fecha`, unas 6 filas. El script borra esa tabla al final.
-6. **Preguntas (5 min).** Cada quien responde lo que construyó. Abajo hay una lista corta para repartirse.
+El reporte, con el rango del 1 de enero de 2026 al 31 de diciembre de 2026, muestra esas dos ventas. Bogotá queda con inventario y sin ventas de prueba: el Corolla se vendió en Medellín y el March en Cali.
 
-## Preguntas que conviene poder responder
+Las dos ventas iniciales no aparecen en Auditoría. `02_dml.sql` corre antes de los triggers, y el trigger solo ve lo que pasa después.
 
-- **Vista, procedimiento y trigger.** La vista (`vw_detalle_ventas`) solo lee y no guarda datos. El procedimiento (`sp_registrar_venta`) toma el precio y hace el `INSERT`. El trigger corre solo, en todo `INSERT` o `DELETE` de `VENTA`, aunque nadie llame al procedimiento: rechaza un carro que no está disponible, lo marca vendido y deja la fila en `AUDITORIA`.
-- **Por qué el monto se guarda en `VENTA`.** Es el precio del día de la venta. Si mañana cambia `CARROS.Precio_Venta`, la venta histórica no se mueve. No es redundancia: depende de la venta, no del vehículo.
-- **Por qué no hay otro índice en `DNI` o `VIN`.** Esas columnas ya son `UNIQUE`, e InnoDB también indexa las llaves foráneas. Repetirlas no acelera nada y encarece cada escritura.
-- **Por qué `idx_carro_estado_marca` empieza por el estado.** La pantalla filtra por estado sin obligar a elegir marca. El prefijo izquierdo del índice tiene que ser esa columna.
-- **Dos cuentas distintas.** `vendedor` / `vendedor123` entra al sitio. `vendedor_concesionario` entra a MySQL. Al iniciar sesión, Flask abre la conexión con la cuenta del rol, así un `DELETE` del vendedor también lo niega el SGBD.
-- **`SQL SECURITY INVOKER`.** La vista y el procedimiento usan los permisos de quien llama, no los de `root`. El trigger sí queda como `root`, y por eso puede actualizar `CARROS` aunque el vendedor no tenga `UPDATE` sobre esa tabla.
-- **Las dos ventas iniciales no salen en auditoría.** `02_dml.sql` corre antes de `05_triggers.sql`. El trigger solo ve lo que ocurre después.
-- **Backup.** `mysqldump --single-transaction --routines --triggers`. Restaurar ese archivo rehace la base. No incluye las cuentas de MySQL: esas viven en `06_usuarios.sql`. En el mismo servidor, después de borrar datos, el backup alcanza porque los usuarios siguen ahí.
+## Probar lo que pide la materia
 
-## Instalación sin Docker
+Con la base ya levantada, desde la raíz:
 
-Hace falta MySQL 8 y Python 3.11+.
+```bash
+./base_de_datos/demo_permisos.sh
+./base_de_datos/demo_procedimiento.sh
+./base_de_datos/demo_transaccion.sh
+./base_de_datos/demo_explain.sh
+./base_de_datos/generar_backup.sh
+./base_de_datos/demo_backup.sh --confirmar
+```
+
+- `demo_permisos.sh`: el `INSERT` de consulta falla y el vendedor no puede anular una venta.
+- `demo_procedimiento.sh`: registra una venta, el carro queda vendido y Auditoría recibe la fila. Una segunda venta del mismo carro la rechaza el trigger.
+- `demo_transaccion.sh`: hace `BEGIN`, inserta un cliente y hace `ROLLBACK`. Ese cliente no queda.
+- `demo_explain.sh`: en `VENTA` el plan usa `idx_venta_fecha`. En una tabla de laboratorio de 5000 filas, sin índice el plan es `ALL`; con índice baja a unas 6 filas. El script borra esa tabla al terminar.
+- `demo_backup.sh --confirmar`: borra las ventas y las restaura desde `concesionario_backup.sql`. Conviene generar el backup antes, con la base ya cargada.
+
+## Documentos
+
+- `docs/Manual_de_usuario.pdf`: cómo prender el sistema y qué hace cada pantalla.
+- `docs/Manual_tecnico.pdf`: carpetas, puertos y cómo se conecta Flask con MySQL.
+
+El documento de presentación, el que repasa cada requisito del docente, no va en el repositorio. Quedó en Descargas, con el nombre `Documento_presentacion_Administracion_de_Bases_de_Datos.pdf`.
+
+## Sin Docker
+
+Hace falta MySQL 8 y Python 3.11 o superior.
 
 ```bash
 mysql -h 127.0.0.1 -uroot -p < base_de_datos/01_ddl.sql
@@ -120,7 +138,7 @@ mysql -h 127.0.0.1 -uroot -p < base_de_datos/06_usuarios.sql
 mysql -h 127.0.0.1 -uroot -p < base_de_datos/07_indices.sql
 ```
 
-Si el servidor tiene el binlog prendido y rechaza el trigger, activen `log_bin_trust_function_creators=1` o créenlos como administrador.
+Si el servidor tiene el binlog prendido y rechaza el trigger, hay que activar `log_bin_trust_function_creators=1`.
 
 ```bash
 cd app/backend
@@ -130,7 +148,7 @@ pip install -r requirements.txt
 cp config.example.env .env
 ```
 
-Completen `app/backend/.env` con las claves reales de su MySQL y ejecuten:
+En `.env` van el host, el puerto y las claves de ese MySQL. Después:
 
 ```bash
 set -a
@@ -138,13 +156,3 @@ source .env
 set +a
 flask --app app run --port 8080
 ```
-
-## Documento
-
-`docs/documento_tecnico.pdf` tiene portada, problema, alcance, justificación de MySQL, modelos, normalización, diccionario, seguridad, respaldo, índices, arquitectura y manual de instalación.
-
-Antes de entregar, completen en la portada los nombres y códigos del equipo. El PDF se regenera abriendo `docs/documento_tecnico.html` en el navegador e imprimiendo a PDF, o con el comando que quedó anotado al final de ese HTML.
-
-## Entrega en Git
-
-El enunciado pide historial de todos los integrantes. Cada quien hace sus propios commits, con su usuario de GitHub o GitLab. No hace falta un commit por archivo: sí hace falta que no exista un único autor para todo el trabajo.
